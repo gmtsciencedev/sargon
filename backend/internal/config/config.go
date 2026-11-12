@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	_ "time/tzdata" // zone database for site.timezone on hosts without tzdata
 
 	"gopkg.in/yaml.v3"
 )
@@ -183,6 +184,22 @@ type SiteConfig struct {
 	UserDisplay   string `yaml:"user_display" json:"user_display"`       // "login" (default), "fullname", "email"
 	CodeTheme     string `yaml:"code_theme" json:"code_theme"`           // highlight.js theme name (light mode)
 	CodeThemeDark string `yaml:"code_theme_dark" json:"code_theme_dark"` // highlight.js theme name (dark mode)
+	Timezone      string `yaml:"timezone" json:"timezone"`               // IANA zone for printed timestamps, e.g. "Europe/Paris"; empty = server's zone
+}
+
+// Location returns the site's time zone for timestamps shown to readers
+// (PDF footers): the configured IANA zone, or the server's own zone when
+// none is set. validate rejects unknown zones, so the fallback only covers
+// configs loaded without validation.
+func (s SiteConfig) Location() *time.Location {
+	if s.Timezone == "" {
+		return time.Local
+	}
+	loc, err := time.LoadLocation(s.Timezone)
+	if err != nil {
+		return time.Local
+	}
+	return loc
 }
 
 // AuthConfig holds authentication settings.
@@ -397,6 +414,12 @@ func (s *Store) save() error {
 func validate(cfg Config) error {
 	if cfg.Site.Title == "" {
 		return fmt.Errorf("site.title must not be empty")
+	}
+
+	if cfg.Site.Timezone != "" {
+		if _, err := time.LoadLocation(cfg.Site.Timezone); err != nil {
+			return fmt.Errorf("site.timezone: unknown time zone %q (use an IANA name such as Europe/Paris)", cfg.Site.Timezone)
+		}
 	}
 
 	if cfg.Auth.SessionTTL != "" {

@@ -6,6 +6,7 @@ Access: Admin > Configuration
 
 - **Site Title** — displayed in the banner
 - **Base URL** — the public URL of the wiki (e.g. `https://wiki.example.com`)
+- **Time zone** — IANA zone name (e.g. `Europe/Paris`) used for the "Generated" timestamp in PDF footers, printed as `2026-11-12 18:31 CET`. Empty uses the server's zone, also named explicitly (`UTC`).
 - **Sidebar Page** — page used as the sidebar (default: `sidebar`)
 - **Footer Page** — page used as the footer (default: `footer`)
 - **TOC Max Level** — maximum heading level shown in the table of contents (0 = disabled)

@@ -27,6 +27,13 @@ project's design invariants and `specs/` for the dialect specification.
   pages.** The headless browser only received a login cookie; callers
   authenticated by token now get a temporary session, as the render
   endpoint already did.
+- **PDF footer timestamp was ambiguous** — `11/12/26, 5:31 PM`, US
+  order, in the server's zone without naming it. The footer now reads
+  `2026-11-12 18:31 CET`, in the new `site.timezone` setting (Admin >
+  Configuration > Time zone), or the server's zone named explicitly.
+- **🔒 printed as an empty box in PDFs** ("☐ Signed"): the server's
+  Chrome had no emoji font. Deployments need `fonts-noto-color-emoji`;
+  see `UPGRADE.md`.
 
 ## [1.0.0-rc.6] — 2026-10-30
 

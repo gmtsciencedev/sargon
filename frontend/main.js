@@ -11860,6 +11860,12 @@ async function renderAdminConfigTab(container) {
       "text",
       (config.site && config.site.base_url) || ""
     )
+    const timezoneInput = adminFormField(
+      form,
+      "Time zone for printed timestamps (IANA name, e.g. Europe/Paris; empty = server time)",
+      "text",
+      (config.site && config.site.timezone) || ""
+    )
     const sidebarInput = adminFormField(form, "Sidebar Page", "text", (config.site && config.site.sidebar_page) || "")
     const footerInput = adminFormField(form, "Footer Page", "text", (config.site && config.site.footer_page) || "")
     const tocMaxLevelInput = adminFormField(
@@ -12511,6 +12517,7 @@ async function renderAdminConfigTab(container) {
         site: {
           title: titleInput.value.trim(),
           base_url: baseUrlInput.value.trim(),
+          timezone: timezoneInput.value.trim(),
           sidebar_page: sidebarInput.value.trim(),
           footer_page: footerInput.value.trim(),
           toc_max_level: parseInt(tocMaxLevelInput.value, 10) || 3,

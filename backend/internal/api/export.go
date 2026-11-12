@@ -97,11 +97,18 @@ func (s *Server) printPagePDF(baseCtx context.Context, pagePath, sessionID, base
 	// Determine the wiki's site title for the running header. Falls back to
 	// "Sargon" if no configuration is loaded (e.g. dev mode without a store).
 	siteTitle := "Sargon"
+	loc := time.Local
 	if s.configStore != nil {
-		if t := strings.TrimSpace(s.configStore.Get().Site.Title); t != "" {
+		site := s.configStore.Get().Site
+		if t := strings.TrimSpace(site.Title); t != "" {
 			siteTitle = t
 		}
+		loc = site.Location()
 	}
+	// The footer timestamp is written here rather than through Chrome's
+	// .date class, which prints the browser locale's short form
+	// (11/12/26, 5:31 PM) in the server's zone without naming it.
+	generated := pdfTimestamp(time.Now(), loc)
 
 	var pdfBuf []byte
 	tasks = append(tasks, chromedp.ActionFunc(func(ctx context.Context) error {
@@ -116,7 +123,7 @@ func (s *Server) printPagePDF(baseCtx context.Context, pagePath, sessionID, base
 			WithPaperHeight(11.69).
 			WithDisplayHeaderFooter(true).
 			WithHeaderTemplate(pdfHeaderTemplate(siteTitle)).
-			WithFooterTemplate(pdfFooterTemplate()).
+			WithFooterTemplate(pdfFooterTemplate(generated)).
 			Do(ctx)
 		return err
 	}))
@@ -141,12 +148,19 @@ func pdfHeaderTemplate(siteTitle string) string {
 </div>`
 }
 
-// pdfFooterTemplate returns the running-footer HTML. It shows the document
-// generation date on the left and the page count on the right. Chrome
-// substitutes `.date`, `.pageNumber` and `.totalPages` at print time.
-func pdfFooterTemplate() string {
+// pdfFooterTemplate returns the running-footer HTML: the generation
+// timestamp (see pdfTimestamp) on the left and the page count on the right.
+// Chrome substitutes `.pageNumber` and `.totalPages` at print time.
+func pdfFooterTemplate(generated string) string {
 	return `<div style="font-size:9px; color:#888; width:100%; padding:0 0.5in 4px; -webkit-print-color-adjust:exact; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,sans-serif; display:flex; justify-content:space-between;">
-  <span>Generated <span class="date"></span></span>
+  <span>Generated ` + html.EscapeString(generated) + `</span>
   <span>Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>
 </div>`
+}
+
+// pdfTimestamp formats the "Generated" footer stamp: ISO date, 24-hour
+// time, and the zone abbreviation (CET, CEST, UTC…), so a printed record
+// reads the same to every reader.
+func pdfTimestamp(t time.Time, loc *time.Location) string {
+	return t.In(loc).Format("2006-01-02 15:04 MST")
 }

@@ -8,6 +8,7 @@ This guide covers deploying Sargon on a Linux VPS with automatic HTTPS via Let's
 - A domain name pointed to the server's public IP (A record)
 - Ports 80 and 443 open in the firewall
 - PostgreSQL 14+ installed (needed for todo, database plugin, and structured data)
+- Google Chrome or Chromium, for PDF export and page rendering, with a colour emoji font so status icons such as 🔒 print: `sudo apt install fonts-noto-color-emoji`
 
 ## 1. Build
 

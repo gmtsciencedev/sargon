@@ -95,6 +95,15 @@ edited under the new version and must be discarded.
 
 ## Version notes
 
+### 1.0.0-rc.6 → next release
+
+- Install a colour emoji font on the server so PDF exports print status
+  icons such as 🔒: `sudo apt install fonts-noto-color-emoji`, then
+  restart the service.
+- Optionally set **Admin > Configuration > Time zone** (e.g.
+  `Europe/Paris`) for the timestamp in PDF footers; without it the
+  footer uses the server's zone and names it.
+
 ### 1.0.0-rc.5 → 1.0.0-rc.6
 
 First release under the name Sargon. Nothing to change on an existing
