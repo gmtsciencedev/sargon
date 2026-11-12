@@ -10,7 +10,23 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
-Nothing pending — the working tree matches `v1.0.0-rc.6`.
+### Added
+
+- **`export_page_pdf` MCP tool.** An agent can export a page to PDF —
+  the same document the Export PDF button produces — opened as the
+  calling user, so ACLs apply. The PDF comes back as an embedded
+  `application/pdf` resource with its size and sha256.
+
+### Fixed
+
+- **PDF footer showed a double slash** in the "Printed from" address
+  (`https://host//page`) on every export; the export URL was joined
+  with an extra `/`. The root page now exports under its canonical
+  `/` rather than `/index`.
+- **PDF export with an API token printed an error page for protected
+  pages.** The headless browser only received a login cookie; callers
+  authenticated by token now get a temporary session, as the render
+  endpoint already did.
 
 ## [1.0.0-rc.6] — 2026-10-30
 

@@ -186,6 +186,14 @@ type PageRenderer interface {
 	RenderPageHTML(ctx context.Context, pagePath, username string) (html string, jsErrors []string, err error)
 }
 
+// PDFExporter prints a wiki page to PDF exactly as the "Export PDF" button
+// does, opened as the given user. Implemented in api/export.go over the same
+// chromedp path; nil (no Chrome available) makes export_page_pdf return a
+// service-unavailable error.
+type PDFExporter interface {
+	ExportPagePDF(ctx context.Context, pagePath, username string) ([]byte, error)
+}
+
 // DraftStateProvider exposes draft and lock state. The MCP layer uses it to
 // surface pending edits in get_page_meta and to refuse external writes that
 // would race against an in-progress edit or clobber unpublished work. The
@@ -296,6 +304,7 @@ type Deps struct {
 	MediaRefs       ReferenceIndex
 	MediaVersions   MediaVersionReader
 	Renderer        PageRenderer
+	PDFExporter     PDFExporter
 	SiteBaseURL     string // e.g. "https://wiki.example.com"; used by upload_attachment_instructions
 	ExtractUsername UsernameExtractor
 	RequireSummary  bool // when true, write_page rejects calls without a summary

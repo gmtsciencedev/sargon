@@ -62,6 +62,7 @@ func registerTools(srv *mcpsrv.MCPServer, deps Deps) {
 	registerDeleteAttachmentTool(srv, deps)
 	registerCreatePageFromTemplateTool(srv, deps)
 	registerRenderPageTool(srv, deps)
+	registerExportPagePDFTool(srv, deps)
 	registerEnterEditSessionTool(srv, deps)
 	registerSaveEditDraftTool(srv, deps)
 	registerReadEditDraftTool(srv, deps)

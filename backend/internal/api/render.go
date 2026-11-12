@@ -22,9 +22,6 @@ func (s *Server) handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pagePath := "/" + strings.TrimPrefix(r.URL.Path, "/api/render/")
-	if pagePath == "/" {
-		pagePath = "/index"
-	}
 
 	baseURL, host := s.renderBaseAndHost(r)
 
@@ -67,9 +64,8 @@ func (s *Server) handleRender(w http.ResponseWriter, r *http.Request) {
 }
 
 // renderBaseAndHost computes the same base URL and cookie host that
-// handleRender / handleExportPDF use, based on the incoming request. For
-// MCP calls, use renderBaseAndHostForMCP instead — it falls back on the
-// configured site base URL.
+// handleRender / handleExportPDF use, based on the incoming request. MCP
+// calls have no browser request to read from; they use configBaseAndHost.
 func (s *Server) renderBaseAndHost(r *http.Request) (baseURL, host string) {
 	if s.serveWeb {
 		scheme := "http"
@@ -92,7 +88,7 @@ func (s *Server) renderBaseAndHost(r *http.Request) (baseURL, host string) {
 
 // renderPageHTMLWithSession is the shared chromedp path used by both the
 // HTTP /api/render/* endpoint and the MCP render_page tool. It navigates
-// the headless browser to <baseURL>/<pagePath>?export=pdf, waits for the
+// the headless browser to <baseURL><pagePath>?export=pdf, waits for the
 // [data-export-ready] marker, and returns the OuterHTML of #content plus
 // any JS console errors observed during navigation.
 func (s *Server) renderPageHTMLWithSession(baseCtx context.Context, pagePath, sessionID, baseURL, host string) (string, []string, error) {
@@ -100,7 +96,7 @@ func (s *Server) renderPageHTMLWithSession(baseCtx context.Context, pagePath, se
 		return "", nil, fmt.Errorf("chrome not available for rendering")
 	}
 
-	pageURL := fmt.Sprintf("%s/%s?export=pdf", baseURL, pagePath)
+	pageURL := fmt.Sprintf("%s%s?export=pdf", baseURL, pagePath)
 
 	ctx, cancel := chromedp.NewContext(s.browserAllocCtx)
 	defer cancel()
@@ -153,16 +149,25 @@ func (s *Server) RenderPageHTML(ctx context.Context, pagePath, username string) 
 	if s.browserAllocCtx == nil {
 		return "", nil, fmt.Errorf("render_page: Chrome not available on this deployment")
 	}
-	if pagePath == "" || pagePath == "/" {
-		pagePath = "/index"
-	}
 	if !strings.HasPrefix(pagePath, "/") {
 		pagePath = "/" + pagePath
 	}
 
-	// Base URL + cookie host from config.
-	baseURL := "http://localhost:5173"
-	host := "localhost"
+	baseURL, host := s.configBaseAndHost()
+
+	sessionID := ""
+	if username != "" && s.sessionStore != nil {
+		sessionID = s.sessionStore.Create(username)
+		defer s.sessionStore.Delete(sessionID)
+	}
+	return s.renderPageHTMLWithSession(ctx, pagePath, sessionID, baseURL, host)
+}
+
+// configBaseAndHost returns the base URL and cookie host for headless
+// renders that do not come from a browser request (the MCP tools): the
+// configured site.base_url, or the Vite dev server when none is set.
+func (s *Server) configBaseAndHost() (baseURL, host string) {
+	baseURL, host = "http://localhost:5173", "localhost"
 	if s.configStore != nil {
 		if cfg := s.configStore.Get(); cfg.Site.BaseURL != "" {
 			if u, err := url.Parse(cfg.Site.BaseURL); err == nil && u.Host != "" {
@@ -171,11 +176,5 @@ func (s *Server) RenderPageHTML(ctx context.Context, pagePath, username string) 
 			}
 		}
 	}
-
-	sessionID := ""
-	if username != "" && s.sessionStore != nil {
-		sessionID = s.sessionStore.Create(username)
-		defer s.sessionStore.Delete(sessionID)
-	}
-	return s.renderPageHTMLWithSession(ctx, pagePath, sessionID, baseURL, host)
+	return baseURL, host
 }

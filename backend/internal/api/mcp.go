@@ -50,6 +50,7 @@ func (s *Server) buildMCPHandler() http.Handler {
 		MediaRefs:       s.orphanDetector,
 		MediaVersions:   s.mediaVersionStore,
 		Renderer:        s,
+		PDFExporter:     s,
 		SiteBaseURL:     siteBaseURL(s),
 		ExtractUsername: UsernameFromContext,
 		RequireSummary:  s.configStore != nil && s.configStore.Get().AIAPI.RequireSummary,

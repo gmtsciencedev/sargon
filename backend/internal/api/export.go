@@ -22,63 +22,73 @@ func (s *Server) handleExportPDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pagePath := "/" + strings.TrimPrefix(r.URL.Path, "/api/export/pdf/")
-	if pagePath == "/" {
-		pagePath = "/index"
-	}
 
-	// Determine the base URL for the wiki.
-	// In production (serve-web), the backend serves HTML — use the request host.
-	// In dev mode, the frontend is on Vite (port 5173) — Chrome must hit that.
-	var baseURL string
-	if s.serveWeb {
-		scheme := "http"
-		if r.TLS != nil {
-			scheme = "https"
-		}
-		if fwd := r.Header.Get("X-Forwarded-Proto"); fwd != "" {
-			scheme = fwd
-		}
-		baseURL = fmt.Sprintf("%s://%s", scheme, r.Host)
-	} else {
-		// Dev mode: Vite serves the frontend on port 5173.
-		baseURL = "http://localhost:5173"
-	}
-	pageURL := fmt.Sprintf("%s/%s?export=pdf", baseURL, pagePath)
+	baseURL, host := s.renderBaseAndHost(r)
 
-	// Extract host without port for cookie domain.
-	host := r.Host
-	if idx := strings.Index(host, ":"); idx != -1 {
-		host = host[:idx]
-	}
-
-	// Forward session cookie if present. Without this, Chrome loads the
-	// export URL unauthenticated and the frontend's /api/pages fetch fails
-	// with 403 on any ACL-protected page.
-	var sessionCookie *http.Cookie
+	// Forward the session cookie when present. A caller authenticated by
+	// API token has none, so give the headless browser a temporary session
+	// for that user — otherwise the frontend's /api/pages fetch runs
+	// anonymously and 403s on any ACL-protected page.
+	sessionID := ""
 	if cookie, err := r.Cookie(auth.CookieName); err == nil {
-		sessionCookie = cookie
+		sessionID = cookie.Value
+	} else if username := UsernameFromContext(r.Context()); username != "" {
+		sessionID = s.sessionStore.Create(username)
+		defer s.sessionStore.Delete(sessionID)
 	}
 
-	// Create a new tab context from the persistent browser.
+	pdfBuf, err := s.printPagePDF(r.Context(), pagePath, sessionID, baseURL, host)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("PDF generation failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, pagePath))
+	w.Write(pdfBuf)
+}
+
+// ExportPagePDF implements mcpserver.PDFExporter. Called from the
+// export_page_pdf MCP tool: a temporary session for `username` lets the
+// headless browser open ACL-gated pages exactly as that user would.
+func (s *Server) ExportPagePDF(ctx context.Context, pagePath, username string) ([]byte, error) {
+	if s.browserAllocCtx == nil {
+		return nil, fmt.Errorf("PDF export not available on this deployment (no Chrome/Chromium)")
+	}
+	if !strings.HasPrefix(pagePath, "/") {
+		pagePath = "/" + pagePath
+	}
+	baseURL, host := s.configBaseAndHost()
+
+	sessionID := ""
+	if username != "" && s.sessionStore != nil {
+		sessionID = s.sessionStore.Create(username)
+		defer s.sessionStore.Delete(sessionID)
+	}
+	return s.printPagePDF(ctx, pagePath, sessionID, baseURL, host)
+}
+
+// printPagePDF is the chromedp path shared by the HTTP export endpoint and
+// the MCP tool: it opens <baseURL><pagePath>?export=pdf with the given
+// session, waits for the [data-export-ready] marker, and prints A4 with the
+// running header and footer.
+func (s *Server) printPagePDF(baseCtx context.Context, pagePath, sessionID, baseURL, host string) ([]byte, error) {
+	pageURL := fmt.Sprintf("%s%s?export=pdf", baseURL, pagePath)
+
 	ctx, cancel := chromedp.NewContext(s.browserAllocCtx)
 	defer cancel()
-
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	var tasks chromedp.Tasks
-
-	// Set cookies before navigating.
-	if sessionCookie != nil {
+	if sessionID != "" {
 		tasks = append(tasks, chromedp.ActionFunc(func(ctx context.Context) error {
-			return network.SetCookie(sessionCookie.Name, sessionCookie.Value).
+			return network.SetCookie(auth.CookieName, sessionID).
 				WithDomain(host).
 				WithPath("/").
 				Do(ctx)
 		}))
 	}
-
-	// Navigate and wait for export-ready signal.
 	tasks = append(tasks,
 		chromedp.Navigate(pageURL),
 		chromedp.WaitVisible(`[data-export-ready]`, chromedp.ByQuery),
@@ -112,13 +122,9 @@ func (s *Server) handleExportPDF(w http.ResponseWriter, r *http.Request) {
 	}))
 
 	if err := chromedp.Run(ctx, tasks); err != nil {
-		http.Error(w, fmt.Sprintf("PDF generation failed: %v", err), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, pagePath))
-	w.Write(pdfBuf)
+	return pdfBuf, nil
 }
 
 // pdfHeaderTemplate returns the running-header HTML Chrome injects on every
