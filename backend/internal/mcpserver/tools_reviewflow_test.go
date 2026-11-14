@@ -32,14 +32,14 @@ func mkStatus(current, validated int64, isValidated bool, roles ...string) *revi
 func TestBuildReviewflowList_HappyPath(t *testing.T) {
 	t.Parallel()
 	statuses := map[string]*reviewflow.Status{
-		"a/one":   mkStatus(2, 2, true, "reviewer"),
-		"a/two":   mkStatus(3, 2, false, "reviewer", "validator"),
-		"a/three": mkStatus(1, 1, true, "reviewer"),
-		"other/x": mkStatus(1, 1, true, "reviewer"), // outside prefix
+		"/a/one":   mkStatus(2, 2, true, "reviewer"),
+		"/a/two":   mkStatus(3, 2, false, "reviewer", "validator"),
+		"/a/three": mkStatus(1, 1, true, "reviewer"),
+		"/other/x": mkStatus(1, 1, true, "reviewer"), // outside prefix
 	}
 	rows, scanned, skippedAcl := buildReviewflowList(reviewflowScanArgs{
 		pages:  []string{"/a/one", "/a/two", "/a/three", "/other/x"},
-		prefix: "a",
+		prefix: "/a",
 		limit:  100,
 		getStatus: func(p string) (*reviewflow.Status, error) {
 			return statuses[p], nil
@@ -73,15 +73,15 @@ func TestBuildReviewflowList_HappyPath(t *testing.T) {
 func TestBuildReviewflowList_UnconfiguredFilter(t *testing.T) {
 	t.Parallel()
 	statuses := map[string]*reviewflow.Status{
-		"a/configured":   mkStatus(1, 1, true, "reviewer"),
-		"a/unconfigured": {Roles: map[string]string{}, MissingRoles: map[string]string{}},
+		"/a/configured":   mkStatus(1, 1, true, "reviewer"),
+		"/a/unconfigured": {Roles: map[string]string{}, MissingRoles: map[string]string{}},
 	}
 	pages := []string{"/a/configured", "/a/unconfigured"}
 	getStatus := func(p string) (*reviewflow.Status, error) { return statuses[p], nil }
 
 	// Default: only configured page returned.
 	rows, _, _ := buildReviewflowList(reviewflowScanArgs{
-		pages: pages, prefix: "a", limit: 100, getStatus: getStatus,
+		pages: pages, prefix: "/a", limit: 100, getStatus: getStatus,
 	})
 	if len(rows) != 1 || rows[0].Path != "/a/configured" {
 		t.Fatalf("default: rows=%+v, want single /a/configured", rows)
@@ -92,7 +92,7 @@ func TestBuildReviewflowList_UnconfiguredFilter(t *testing.T) {
 
 	// include_unconfigured=true: both rows returned, unconfigured marked.
 	rows, _, _ = buildReviewflowList(reviewflowScanArgs{
-		pages: pages, prefix: "a", limit: 100, includeUnconfigured: true, getStatus: getStatus,
+		pages: pages, prefix: "/a", limit: 100, includeUnconfigured: true, getStatus: getStatus,
 	})
 	if len(rows) != 2 {
 		t.Fatalf("include_unconfigured: rows=%d, want 2", len(rows))
@@ -117,14 +117,14 @@ func TestBuildReviewflowList_UnconfiguredFilter(t *testing.T) {
 func TestBuildReviewflowList_ACLSkip(t *testing.T) {
 	t.Parallel()
 	statuses := map[string]*reviewflow.Status{
-		"a/visible": mkStatus(1, 1, true, "reviewer"),
-		"a/hidden":  mkStatus(1, 1, true, "reviewer"),
+		"/a/visible": mkStatus(1, 1, true, "reviewer"),
+		"/a/hidden":  mkStatus(1, 1, true, "reviewer"),
 	}
 	rows, scanned, skippedAcl := buildReviewflowList(reviewflowScanArgs{
 		pages:     []string{"/a/visible", "/a/hidden"},
-		prefix:    "a",
+		prefix:    "/a",
 		limit:     100,
-		canView:   func(p string) bool { return p != "a/hidden" },
+		canView:   func(p string) bool { return p != "/a/hidden" },
 		getStatus: func(p string) (*reviewflow.Status, error) { return statuses[p], nil },
 	})
 	if len(rows) != 1 || rows[0].Path != "/a/visible" {
@@ -146,10 +146,10 @@ func TestBuildReviewflowList_ContinuesPastGetStatusError(t *testing.T) {
 	t.Parallel()
 	rows, scanned, _ := buildReviewflowList(reviewflowScanArgs{
 		pages:  []string{"/a/ok", "/a/bad", "/a/ok2"},
-		prefix: "a",
+		prefix: "/a",
 		limit:  100,
 		getStatus: func(p string) (*reviewflow.Status, error) {
-			if p == "a/bad" {
+			if p == "/a/bad" {
 				return nil, errors.New("attic corrupt")
 			}
 			return mkStatus(1, 1, true, "reviewer"), nil
@@ -170,7 +170,7 @@ func TestBuildReviewflowList_LimitStopsIteration(t *testing.T) {
 	pages := []string{"/a/1", "/a/2", "/a/3", "/a/4", "/a/5"}
 	rows, scanned, _ := buildReviewflowList(reviewflowScanArgs{
 		pages:  pages,
-		prefix: "a",
+		prefix: "/a",
 		limit:  2,
 		getStatus: func(p string) (*reviewflow.Status, error) {
 			return mkStatus(1, 1, true, "reviewer"), nil
@@ -207,7 +207,7 @@ func TestBuildReviewflowList_CarriesOverdueRoles(t *testing.T) {
 	st := mkStatus(3, 2, false, "reviewer", "validator")
 	st.OverdueRoles = []string{"reviewer"}
 	rows, _, _ := buildReviewflowList(reviewflowScanArgs{
-		pages: []string{"/a/x"}, prefix: "a", limit: 10,
+		pages: []string{"/a/x"}, prefix: "/a", limit: 10,
 		getStatus: func(p string) (*reviewflow.Status, error) { return st, nil },
 	})
 	if len(rows) != 1 {
@@ -239,7 +239,7 @@ func TestBuildReviewflowList_SurfacesSignatories(t *testing.T) {
 		IsFullyValidated: false,
 	}
 	rows, _, _ := buildReviewflowList(reviewflowScanArgs{
-		pages: []string{"/qms/sop07"}, prefix: "qms", limit: 10,
+		pages: []string{"/qms/sop07"}, prefix: "/qms", limit: 10,
 		getStatus: func(p string) (*reviewflow.Status, error) { return st, nil },
 	})
 	if len(rows) != 1 {

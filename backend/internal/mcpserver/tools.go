@@ -79,11 +79,10 @@ func (d Deps) canView(ctx context.Context, pagePath string) bool {
 		return true
 	}
 	username := d.ExtractUsername(ctx)
-	aclPath := "/" + strings.TrimPrefix(pagePath, "/")
-	if !d.ACL.CheckPermission(username, d.effectiveGroups(username), aclPath, "view") {
+	if !d.ACL.CheckPermission(username, d.effectiveGroups(username), pagePath, "view") {
 		return false
 	}
-	return d.ACL.CheckAIPermission(aclPath, "view")
+	return d.ACL.CheckAIPermission(pagePath, "view")
 }
 
 // canEdit mirrors canView but for edit permission.
@@ -92,11 +91,10 @@ func (d Deps) canEdit(ctx context.Context, pagePath string) bool {
 		return true
 	}
 	username := d.ExtractUsername(ctx)
-	aclPath := "/" + strings.TrimPrefix(pagePath, "/")
-	if !d.ACL.CheckPermission(username, d.effectiveGroups(username), aclPath, "edit") {
+	if !d.ACL.CheckPermission(username, d.effectiveGroups(username), pagePath, "edit") {
 		return false
 	}
-	return d.ACL.CheckAIPermission(aclPath, "edit")
+	return d.ACL.CheckAIPermission(pagePath, "edit")
 }
 
 func (d Deps) effectiveGroups(username string) []string {
@@ -211,7 +209,7 @@ func registerListNamespaceTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Sitemap == nil {
 			return errorResult("namespace listing not available"), nil
 		}
-		nsPath := strings.Trim(req.GetString("path", ""), "/")
+		nsPath := canonicalNamespaceArg(req.GetString("path", ""))
 		depth := req.GetInt("depth", 1)
 		includeMeta := req.GetBool("include_meta", false)
 		includeComments := req.GetBool("include_comments", false)
@@ -219,11 +217,6 @@ func registerListNamespaceTool(srv *mcpsrv.MCPServer, deps Deps) {
 		allPages, err := deps.Sitemap.ListAllPages()
 		if err != nil {
 			return errorResult("list pages: " + err.Error()), nil
-		}
-
-		prefix := nsPath
-		if prefix != "" {
-			prefix += "/"
 		}
 
 		type pageInfo struct {
@@ -243,11 +236,11 @@ func registerListNamespaceTool(srv *mcpsrv.MCPServer, deps Deps) {
 		nsCounts := map[string]int{}
 
 		for _, p := range allPages {
-			pagePath := strings.TrimPrefix(p.Path, "/")
-			if prefix != "" && !strings.HasPrefix(pagePath, prefix) {
+			pagePath := p.Path
+			if !strings.HasPrefix(pagePath, nsPath) {
 				continue
 			}
-			rel := strings.TrimPrefix(pagePath, prefix)
+			rel := strings.TrimPrefix(pagePath, nsPath)
 
 			if !deps.canView(ctx, pagePath) {
 				continue
@@ -255,12 +248,12 @@ func registerListNamespaceTool(srv *mcpsrv.MCPServer, deps Deps) {
 
 			if depth == 1 && strings.Contains(rel, "/") {
 				parts := strings.SplitN(rel, "/", 2)
-				nsName := prefix + parts[0]
+				nsName := nsPath + parts[0] + "/"
 				nsCounts[nsName]++
 				continue
 			}
 
-			pi := pageInfo{Path: "/" + pagePath, Title: p.Title}
+			pi := pageInfo{Path: pagePath, Title: p.Title}
 			if includeMeta && deps.Store != nil {
 				if page, err := deps.Store.Get(pagePath); err == nil {
 					pi.Version = page.Meta.Version
@@ -272,18 +265,18 @@ func registerListNamespaceTool(srv *mcpsrv.MCPServer, deps Deps) {
 				// Pass the canonical page path (leading slash, plus the
 				// trailing slash the sitemap already carries on ns-indexes)
 				// so the comment store sees the same shape as the API.
-				pi.OpenComments = deps.Comments.CountOpenThreads(p.Path)
+				pi.OpenComments = deps.Comments.CountOpenThreads(pagePath)
 			}
 			pages = append(pages, pi)
 		}
 
 		namespaces := []nsInfo{}
 		for ns, count := range nsCounts {
-			namespaces = append(namespaces, nsInfo{Path: "/" + ns, PageCount: count})
+			namespaces = append(namespaces, nsInfo{Path: ns, PageCount: count})
 		}
 
 		return jsonResult(map[string]any{
-			"namespace":  "/" + nsPath,
+			"namespace":  nsPath,
 			"pages":      pages,
 			"namespaces": namespaces,
 		}), nil
@@ -326,8 +319,8 @@ func registerReadPagesBatchTool(srv *mcpsrv.MCPServer, deps Deps) {
 
 		results := make([]pageResult, len(paths))
 		for i, p := range paths {
-			pagePath := strings.Trim(p, "/")
-			results[i].Path = p
+			pagePath := canonicalPageArg(p)
+			results[i].Path = pagePath
 
 			if !deps.canView(ctx, pagePath) {
 				results[i].Error = "access denied"
@@ -365,9 +358,8 @@ func registerGetPageMetaTool(srv *mcpsrv.MCPServer, deps Deps) {
 		),
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-		pagePath := strings.TrimSpace(req.GetString("path", ""))
-		pagePath = strings.TrimPrefix(pagePath, "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canView(ctx, pagePath) {
@@ -382,14 +374,14 @@ func registerGetPageMetaTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 
 		resp := map[string]any{
-			"path":          "/" + pagePath,
+			"path":          pagePath,
 			"title":         markdown.ExtractTitle(page.Markdown),
 			"version":       page.Meta.Version,
 			"last_modified": page.Meta.UpdatedAt,
 			"author":        page.Meta.Author,
 		}
 		if deps.TagIndex != nil {
-			resp["tags"] = deps.TagIndex.GetTagsForPage(path.Clean("/" + pagePath))
+			resp["tags"] = deps.TagIndex.GetTagsForPage(path.Clean(pagePath))
 		}
 		if deps.Backlinks != nil {
 			resp["backlinks"] = deps.Backlinks.GetBacklinks(pagePath)
@@ -497,7 +489,7 @@ func registerSearchPagesTool(srv *mcpsrv.MCPServer, deps Deps) {
 				maxPerPage = 0
 			}
 			caseSensitive := req.GetBool("case_sensitive", true)
-			prefix := strings.Trim(req.GetString("path_prefix", ""), "/")
+			prefix := canonicalPrefixArg(req.GetString("path_prefix", ""))
 			raw := pattern
 			if !caseSensitive {
 				raw = "(?i)" + raw
@@ -540,7 +532,7 @@ func registerSearchPagesTool(srv *mcpsrv.MCPServer, deps Deps) {
 				countOnly:  countOnly,
 				canView:    func(p string) bool { return deps.canView(ctx, p) },
 				getMarkdown: func(p string) (string, error) {
-					page, err := deps.Store.Get(strings.TrimPrefix(p, "/"))
+					page, err := deps.Store.Get(p)
 					if err != nil {
 						return "", err
 					}
@@ -549,7 +541,7 @@ func registerSearchPagesTool(srv *mcpsrv.MCPServer, deps Deps) {
 			})
 			envelope := map[string]any{
 				"pattern":        pattern,
-				"path_prefix":    "/" + prefix,
+				"path_prefix":    prefixLabel(prefix),
 				"scanned":        res.Scanned,
 				"skipped_access": res.SkippedAccess,
 				"eligible_pages": res.EligiblePages,
@@ -691,13 +683,9 @@ func grepPages(a grepScanArgs) grepResult {
 		MatchCounts:  []grepPageCount{},
 		ScanComplete: true,
 	}
-	matchPrefix := a.prefix
-	if matchPrefix != "" {
-		matchPrefix += "/"
-	}
 	for _, raw := range a.pages {
-		pagePath := strings.TrimPrefix(raw, "/")
-		if matchPrefix != "" && !strings.HasPrefix(pagePath, matchPrefix) && pagePath != a.prefix {
+		pagePath := raw
+		if !inPrefix(pagePath, a.prefix) {
 			continue
 		}
 		res.EligiblePages++
@@ -737,7 +725,7 @@ func grepPages(a grepScanArgs) grepResult {
 				res.TotalMatches++
 				if !a.countOnly {
 					res.Matches = append(res.Matches, grepMatch{
-						Path:     "/" + pagePath,
+						Path:     pagePath,
 						Line:     i + 1,
 						Column:   loc[0] + 1,
 						Match:    line[loc[0]:loc[1]],
@@ -761,7 +749,7 @@ func grepPages(a grepScanArgs) grepResult {
 	nextPage:
 		if a.countOnly && pageCount > 0 {
 			res.MatchCounts = append(res.MatchCounts, grepPageCount{
-				Path:  "/" + pagePath,
+				Path:  pagePath,
 				Count: pageCount,
 			})
 		}
@@ -785,8 +773,8 @@ func registerGetReviewflowStatusTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Reviewflow == nil {
 			return errorResult("reviewflow service not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canView(ctx, pagePath) {
@@ -840,7 +828,7 @@ func registerListReviewflowsTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Sitemap == nil {
 			return errorResult("namespace listing not available"), nil
 		}
-		prefix := strings.Trim(req.GetString("path_prefix", ""), "/")
+		prefix := canonicalPrefixArg(req.GetString("path_prefix", ""))
 		includeUnconfigured := req.GetBool("include_unconfigured", false)
 		limit := req.GetInt("limit", 500)
 		if limit < 1 {
@@ -869,7 +857,7 @@ func registerListReviewflowsTool(srv *mcpsrv.MCPServer, deps Deps) {
 		})
 
 		return jsonResult(map[string]any{
-			"path_prefix":        "/" + prefix,
+			"path_prefix":        prefixLabel(prefix),
 			"rows":               rows,
 			"scanned":            scanned,
 			"skipped_access":     skippedAcl,
@@ -921,16 +909,12 @@ type reviewflowScanArgs struct {
 // can drive it with plain maps.
 func buildReviewflowList(a reviewflowScanArgs) (rows []reviewflowRow, scanned int, skippedAcl int) {
 	rows = []reviewflowRow{}
-	matchPrefix := a.prefix
-	if matchPrefix != "" {
-		matchPrefix += "/"
-	}
 	for _, raw := range a.pages {
 		if len(rows) >= a.limit {
 			break
 		}
-		pagePath := strings.TrimPrefix(raw, "/")
-		if matchPrefix != "" && !strings.HasPrefix(pagePath, matchPrefix) && pagePath != a.prefix {
+		pagePath := raw
+		if !inPrefix(pagePath, a.prefix) {
 			continue
 		}
 		if a.canView != nil && !a.canView(pagePath) {
@@ -963,7 +947,7 @@ func buildReviewflowList(a reviewflowScanArgs) (rows []reviewflowRow, scanned in
 			}
 		}
 		rows = append(rows, reviewflowRow{
-			Path:             "/" + pagePath,
+			Path:             pagePath,
 			IsFullyValidated: st.IsFullyValidated,
 			CurrentVersion:   st.CurrentPageVer,
 			ValidatedVersion: st.ValidatedVersion,
@@ -1019,7 +1003,7 @@ func registerListBrokenLinksTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Sitemap == nil {
 			return errorResult("namespace listing not available"), nil
 		}
-		prefix := strings.Trim(req.GetString("path_prefix", ""), "/")
+		prefix := canonicalPrefixArg(req.GetString("path_prefix", ""))
 		limit := req.GetInt("limit", 500)
 		if limit < 1 {
 			limit = 500
@@ -1054,7 +1038,7 @@ func registerListBrokenLinksTool(srv *mcpsrv.MCPServer, deps Deps) {
 		})
 
 		return jsonResult(map[string]any{
-			"path_prefix":        "/" + prefix,
+			"path_prefix":        prefixLabel(prefix),
 			"broken":             result.Broken,
 			"scanned":            result.Scanned,
 			"pages_with_broken":  result.PagesWithBroken,
@@ -1119,10 +1103,6 @@ type brokenLinksScanResult struct {
 // returns the same answer.
 func buildBrokenLinksList(a brokenLinksScanArgs) brokenLinksScanResult {
 	result := brokenLinksScanResult{Broken: []brokenLinkRow{}}
-	matchPrefix := a.prefix
-	if matchPrefix != "" {
-		matchPrefix += "/"
-	}
 	existsCache := make(map[string]bool)
 	// slugCache[target] = heading slug set for target page.
 	// Only populated when checkFragments is on; keeps the Store.Get +
@@ -1133,8 +1113,8 @@ func buildBrokenLinksList(a brokenLinksScanArgs) brokenLinksScanResult {
 		if len(result.Broken) >= a.limit {
 			break
 		}
-		pagePath := strings.TrimPrefix(raw, "/")
-		if matchPrefix != "" && !strings.HasPrefix(pagePath, matchPrefix) && pagePath != a.prefix {
+		pagePath := raw
+		if !inPrefix(pagePath, a.prefix) {
 			continue
 		}
 		if a.canView != nil && !a.canView(pagePath) {
@@ -1146,7 +1126,7 @@ func buildBrokenLinksList(a brokenLinksScanArgs) brokenLinksScanResult {
 		if !ok {
 			continue
 		}
-		occurrences := markdown.ExtractLinkOccurrences(md, "/"+pagePath)
+		occurrences := markdown.ExtractLinkOccurrences(md, pagePath)
 		if len(occurrences) == 0 {
 			continue
 		}
@@ -1155,7 +1135,7 @@ func buildBrokenLinksList(a brokenLinksScanArgs) brokenLinksScanResult {
 			if len(result.Broken) >= a.limit {
 				break
 			}
-			resolved := strings.TrimPrefix(occ.Resolved, "/")
+			resolved := occ.Resolved
 			exists, cached := existsCache[resolved]
 			if !cached {
 				exists = a.exists(resolved)
@@ -1164,9 +1144,9 @@ func buildBrokenLinksList(a brokenLinksScanArgs) brokenLinksScanResult {
 			if !exists {
 				hadBroken = true
 				result.Broken = append(result.Broken, brokenLinkRow{
-					Page:     "/" + pagePath,
+					Page:     pagePath,
 					Href:     occ.Href,
-					Resolved: "/" + resolved,
+					Resolved: resolved,
 					Label:    occ.Label,
 					Line:     occ.Line,
 					Reason:   "missing_page",
@@ -1199,9 +1179,9 @@ func buildBrokenLinksList(a brokenLinksScanArgs) brokenLinksScanResult {
 			}
 			hadBroken = true
 			result.Broken = append(result.Broken, brokenLinkRow{
-				Page:     "/" + pagePath,
+				Page:     pagePath,
 				Href:     occ.Href,
-				Resolved: "/" + resolved,
+				Resolved: resolved,
 				Fragment: frag,
 				Label:    occ.Label,
 				Line:     occ.Line,
@@ -1247,8 +1227,8 @@ func registerPreviewPageDiffTool(srv *mcpsrv.MCPServer, deps Deps) {
 		),
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		newMarkdown, err := req.RequireString("markdown")
@@ -1277,7 +1257,7 @@ func registerPreviewPageDiffTool(srv *mcpsrv.MCPServer, deps Deps) {
 			}
 		}
 		return jsonResult(map[string]any{
-			"path":            "/" + pagePath,
+			"path":            pagePath,
 			"current_version": currentVersion,
 			"diff": map[string]any{
 				"added":   added,
@@ -1315,8 +1295,8 @@ func registerWritePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		),
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		newMarkdown, err := req.RequireString("markdown")
@@ -1385,7 +1365,7 @@ func registerWritePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("write failed: " + err.Error()), nil
 		}
 		return jsonResult(map[string]any{
-			"path":    "/" + pagePath,
+			"path":    pagePath,
 			"version": result.Page.Meta.Version,
 			"created": !existedBefore,
 			"updated": existedBefore,

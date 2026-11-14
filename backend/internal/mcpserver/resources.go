@@ -52,8 +52,10 @@ func readWikiResource(ctx context.Context, deps Deps, uri string) ([]mcpgo.Resou
 	if !strings.HasPrefix(uri, wikiURIPrefix) {
 		return nil, fmt.Errorf("unsupported URI %q — expected %s…", uri, wikiURIPrefix)
 	}
-	pagePath := strings.TrimPrefix(uri, wikiURIPrefix)
-	pagePath = strings.TrimPrefix(pagePath, "/")
+	pagePath := canonicalPageArg(strings.TrimPrefix(uri, wikiURIPrefix))
+	if pagePath == "" {
+		pagePath = "/"
+	}
 
 	if !deps.canView(ctx, pagePath) {
 		return nil, fmt.Errorf("access denied")

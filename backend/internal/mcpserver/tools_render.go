@@ -58,13 +58,12 @@ func registerRenderPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Renderer == nil {
 			return errorResult("render_page: rendering not available on this deployment (no Chrome/Chromium)"), nil
 		}
-		pagePath := strings.TrimSpace(req.GetString("path", ""))
+		pagePath := canonicalPageArg(req.GetString("path", ""))
 		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
-		normalized := strings.TrimPrefix(pagePath, "/")
-		if !deps.canView(ctx, normalized) {
-			return errorResult("access denied: no view permission on /" + normalized), nil
+		if !deps.canView(ctx, pagePath) {
+			return errorResult("access denied: no view permission on " + pagePath), nil
 		}
 
 		format := strings.ToLower(strings.TrimSpace(req.GetString("format", "text")))
@@ -88,7 +87,7 @@ func registerRenderPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 
 		username := deps.ExtractUsername(ctx)
-		htmlSrc, jsErrors, err := deps.Renderer.RenderPageHTML(ctx, "/"+normalized, username)
+		htmlSrc, jsErrors, err := deps.Renderer.RenderPageHTML(ctx, pagePath, username)
 		if err != nil {
 			return errorResult("render failed: " + err.Error()), nil
 		}
@@ -97,7 +96,7 @@ func registerRenderPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// pin the answer to a specific version.
 		var version int64
 		if deps.Store != nil {
-			if page, err := deps.Store.Get(normalized); err == nil {
+			if page, err := deps.Store.Get(pagePath); err == nil {
 				version = page.Meta.Version
 			}
 		}
@@ -110,7 +109,7 @@ func registerRenderPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 
 		result := map[string]any{
-			"path":         "/" + normalized,
+			"path":         pagePath,
 			"format":       format,
 			"page_version": version,
 			"size":         len(body),

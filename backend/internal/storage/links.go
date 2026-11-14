@@ -11,6 +11,11 @@ import (
 
 // LinkIndex tracks which pages link to which other pages (via internal hyperlinks).
 // It is persisted as _links.json in the meta directory.
+//
+// Keys and link targets are canonical page paths ("/", "/docs/guide"):
+// every method converts what it is given with CanonicalPath, because
+// callers hand over storage-shaped paths ("/index", "/docs/index") as
+// well as canonical ones, and the two shapes must meet on one key.
 type LinkIndex struct {
 	mu          sync.RWMutex
 	basePath    string              // path to data/meta/ directory
@@ -37,6 +42,7 @@ func (idx *LinkIndex) UpdatePageQueries(pagePath string, tables []string) {
 	if idx.pageToQueryTables == nil {
 		idx.pageToQueryTables = make(map[string][]string)
 	}
+	pagePath = CanonicalPath(pagePath)
 	if len(tables) == 0 {
 		delete(idx.pageToQueryTables, pagePath)
 		return
@@ -88,7 +94,13 @@ func (idx *LinkIndex) Load() error {
 	if stored.PageToLinks == nil {
 		stored.PageToLinks = make(map[string][]string)
 	}
-	idx.PageToLinks = stored.PageToLinks
+	// Indexes saved before keys were canonical may hold "/index"-shaped
+	// entries; merge them onto their canonical key.
+	idx.PageToLinks = make(map[string][]string, len(stored.PageToLinks))
+	for page, links := range stored.PageToLinks {
+		page = CanonicalPath(page)
+		idx.PageToLinks[page] = canonicalLinks(append(idx.PageToLinks[page], links...))
+	}
 	return nil
 }
 
@@ -123,10 +135,11 @@ func (idx *LinkIndex) GetBacklinks(pagePath string) []string {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 
+	target := CanonicalPath(pagePath)
 	var result []string
 	for page, links := range idx.PageToLinks {
 		for _, link := range links {
-			if link == pagePath {
+			if link == target {
 				result = append(result, page)
 				break
 			}
@@ -136,11 +149,27 @@ func (idx *LinkIndex) GetBacklinks(pagePath string) []string {
 	return result
 }
 
+// canonicalLinks converts link targets to canonical page paths, dropping
+// duplicates and keeping first-seen order.
+func canonicalLinks(links []string) []string {
+	out := make([]string, 0, len(links))
+	seen := make(map[string]bool, len(links))
+	for _, l := range links {
+		l = CanonicalPath(l)
+		if !seen[l] {
+			seen[l] = true
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
 // RemovePage removes a page from the link index.
 func (idx *LinkIndex) RemovePage(pagePath string) {
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
 
+	pagePath = CanonicalPath(pagePath)
 	delete(idx.PageToLinks, pagePath)
 	delete(idx.pageToQueryTables, pagePath)
 }
@@ -151,11 +180,10 @@ func (idx *LinkIndex) UpdatePage(pagePath string, links []string) {
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
 
+	pagePath = CanonicalPath(pagePath)
 	if len(links) == 0 {
 		delete(idx.PageToLinks, pagePath)
 		return
 	}
-	dst := make([]string, len(links))
-	copy(dst, links)
-	idx.PageToLinks[pagePath] = dst
+	idx.PageToLinks[pagePath] = canonicalLinks(links)
 }

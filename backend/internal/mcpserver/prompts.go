@@ -41,7 +41,7 @@ func registerSummarizePagePrompt(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddPrompt(p, func(ctx context.Context, req mcpgo.GetPromptRequest) (*mcpgo.GetPromptResult, error) {
 		args := promptArgs(req)
-		pagePath := strings.TrimPrefix(strings.TrimSpace(args["path"]), "/")
+		pagePath := canonicalPageArg(args["path"])
 		if pagePath == "" {
 			return nil, fmt.Errorf("path is required")
 		}
@@ -92,7 +92,7 @@ func registerDraftReviewChecklistPrompt(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddPrompt(p, func(ctx context.Context, req mcpgo.GetPromptRequest) (*mcpgo.GetPromptResult, error) {
 		args := promptArgs(req)
-		pagePath := strings.TrimPrefix(strings.TrimSpace(args["path"]), "/")
+		pagePath := canonicalPageArg(args["path"])
 		if pagePath == "" {
 			return nil, fmt.Errorf("path is required")
 		}
@@ -145,7 +145,7 @@ func registerSuggestTagsPrompt(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddPrompt(p, func(ctx context.Context, req mcpgo.GetPromptRequest) (*mcpgo.GetPromptResult, error) {
 		args := promptArgs(req)
-		pagePath := strings.TrimPrefix(strings.TrimSpace(args["path"]), "/")
+		pagePath := canonicalPageArg(args["path"])
 		if pagePath == "" {
 			return nil, fmt.Errorf("path is required")
 		}

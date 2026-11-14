@@ -155,8 +155,8 @@ func registerEditPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Store == nil {
 			return errorResult("page store not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		summary := strings.TrimSpace(req.GetString("summary", ""))
@@ -241,7 +241,7 @@ func registerEditPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 		if newMarkdown == page.Markdown {
 			return jsonResult(map[string]any{
-				"path":    "/" + pagePath,
+				"path":    pagePath,
 				"version": page.Meta.Version,
 				"edits":   editSummaries,
 				"noop":    true,
@@ -272,7 +272,7 @@ func registerEditPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			}
 			return jsonResult(map[string]any{
 				"dry_run": true,
-				"path":    "/" + pagePath,
+				"path":    pagePath,
 				"version": page.Meta.Version,
 				"edits":   editSummaries,
 				"diff":    diff,
@@ -288,7 +288,7 @@ func registerEditPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("write failed: " + err.Error()), nil
 		}
 		return jsonResult(map[string]any{
-			"path":    "/" + pagePath,
+			"path":    pagePath,
 			"version": result.Page.Meta.Version,
 			"edits":   editSummaries,
 			"diff": map[string]any{

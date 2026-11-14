@@ -12,12 +12,23 @@ project's design invariants and `specs/` for the dialect specification.
 
 ### Fixed
 
-- **MCP tools could not read or write the root page.** The tools drop
-  the leading slash from page paths, which turns `/` into an empty
-  path: `get_page_meta` and the other single-page tools refused it as
-  missing, and `read_pages_batch` and `write_page` passed it to the
-  page store, which rejects an empty path. The root page now works
-  like any other page through the MCP. Shipped as a mid-rc fix.
+- **MCP tools now use canonical page paths throughout.** The tools
+  dropped the leading slash from every path they received and worked
+  on `docs/guide` internally, against the rule that a page path starts
+  with `/`. The root page `/` became an empty path that the tools
+  refused as missing or the page store rejected, and backlinks were
+  looked up under a key that never matched, so `get_page_meta` always
+  reported none. Every tool now converts its path argument once, on
+  entry, to the canonical form (`/`, `/docs/`, `/docs/guide`) and uses
+  it for ACL checks, store calls and the paths it returns. Attachment
+  paths follow the same rule; only the media store, which keys files
+  without the slash, receives the converted form. Namespaces listed by
+  `list_namespace` now carry their trailing slash (`/docs/`). Shipped
+  as a mid-rc fix.
+- **Backlinks listed the root page twice**, as `/` and `/index`: the
+  link index keyed it differently after a save and after a rebuild. Its
+  keys and link targets are now canonical, and indexes saved before
+  are merged on load.
 - **`write_page` and `edit_page` crashed on a deployment without
   reviewflow**, because the validated-page guard received a nil
   service it could not recognise as nil.

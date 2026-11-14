@@ -40,11 +40,8 @@ func registerListPageCommentsTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// Preserve the trailing slash — it distinguishes a namespace-index
 		// page from a leaf. The store's statePath normalises it correctly
 		// on both shapes since the comment-store fix.
-		pagePath := "/" + strings.TrimPrefix(raw, "/")
-		// canView takes a leaf-shape path; strip the trailing slash for
-		// the ACL lookup only.
-		aclPath := strings.TrimRight(strings.TrimPrefix(pagePath, "/"), "/")
-		if !deps.canView(ctx, aclPath) {
+		pagePath := canonicalPageArg(raw)
+		if !deps.canView(ctx, pagePath) {
 			return errorResult("access denied"), nil
 		}
 		includeResolved := req.GetBool("include_resolved", false)

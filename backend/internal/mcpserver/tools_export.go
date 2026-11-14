@@ -40,25 +40,24 @@ func registerExportPagePDFTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.PDFExporter == nil {
 			return errorResult("export_page_pdf: PDF export not available on this deployment (no Chrome/Chromium)"), nil
 		}
-		pagePath := strings.TrimSpace(req.GetString("path", ""))
+		pagePath := canonicalPageArg(req.GetString("path", ""))
 		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
-		normalized := strings.TrimPrefix(pagePath, "/")
-		if !deps.canView(ctx, normalized) {
-			return errorResult("access denied: no view permission on /" + normalized), nil
+		if !deps.canView(ctx, pagePath) {
+			return errorResult("access denied: no view permission on " + pagePath), nil
 		}
 
 		var version int64
 		if deps.Store != nil {
-			page, err := deps.Store.Get("/" + normalized)
+			page, err := deps.Store.Get(pagePath)
 			if err != nil {
-				return errorResult("page not found: /" + normalized), nil
+				return errorResult("page not found: " + pagePath), nil
 			}
 			version = page.Meta.Version
 		}
 
-		pdf, err := deps.PDFExporter.ExportPagePDF(ctx, "/"+normalized, deps.ExtractUsername(ctx))
+		pdf, err := deps.PDFExporter.ExportPagePDF(ctx, pagePath, deps.ExtractUsername(ctx))
 		if err != nil {
 			return errorResult("PDF export failed: " + err.Error()), nil
 		}
@@ -67,9 +66,9 @@ func registerExportPagePDFTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 
 		sum := sha256.Sum256(pdf)
-		filename := pdfFilename(normalized)
+		filename := pdfFilename(pagePath)
 		summary := map[string]any{
-			"path":         "/" + normalized,
+			"path":         pagePath,
 			"page_version": version,
 			"filename":     filename,
 			"mime":         "application/pdf",
@@ -78,7 +77,7 @@ func registerExportPagePDFTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 		result := jsonResult(summary)
 		result.Content = append(result.Content, mcpgo.NewEmbeddedResource(mcpgo.BlobResourceContents{
-			URI:      "wiki:///" + normalized + ".pdf",
+			URI:      "wiki://" + pagePath + ".pdf",
 			MIMEType: "application/pdf",
 			Blob:     base64.StdEncoding.EncodeToString(pdf),
 		}))
@@ -87,10 +86,10 @@ func registerExportPagePDFTool(srv *mcpsrv.MCPServer, deps Deps) {
 }
 
 // pdfFilename names the export after the page: the last path segment, the
-// namespace name for a namespace index ("docs/" → "docs.pdf"), "index.pdf"
-// for the root page.
-func pdfFilename(normalized string) string {
-	name := path.Base(strings.TrimSuffix(normalized, "/"))
+// namespace name for a namespace index ("/docs/" → "docs.pdf"), "index.pdf"
+// for the root page "/".
+func pdfFilename(pagePath string) string {
+	name := path.Base(strings.TrimSuffix(pagePath, "/"))
 	if name == "" || name == "." || name == "/" {
 		name = "index"
 	}

@@ -30,11 +30,10 @@ func (d Deps) canDelete(ctx context.Context, pagePath string) bool {
 		return true
 	}
 	username := d.ExtractUsername(ctx)
-	aclPath := "/" + strings.TrimPrefix(pagePath, "/")
-	if !d.ACL.CheckPermission(username, d.effectiveGroups(username), aclPath, "delete") {
+	if !d.ACL.CheckPermission(username, d.effectiveGroups(username), pagePath, "delete") {
 		return false
 	}
-	return d.ACL.CheckAIPermission(aclPath, "delete")
+	return d.ACL.CheckAIPermission(pagePath, "delete")
 }
 
 // ── insert_database_row ────────────────────────────────────────────────────
@@ -79,8 +78,7 @@ func registerInsertDatabaseRowTool(srv *mcpsrv.MCPServer, deps Deps) {
 
 		// ACL gate.
 		if table.PageFolder != "" {
-			folder := strings.TrimPrefix(pageFolderRoot(table.PageFolder), "/")
-			if !deps.canEdit(ctx, folder) {
+			if !deps.canEdit(ctx, pageFolderRoot(table.PageFolder)) {
 				return errorResult("access denied: no edit permission on " + pageFolderRoot(table.PageFolder)), nil
 			}
 		} else if !deps.isAdmin(ctx) {
@@ -174,8 +172,7 @@ func registerUpdateDatabaseRowTool(srv *mcpsrv.MCPServer, deps Deps) {
 			// Symmetric with insert/delete — a row's bound page is a
 			// database projection, so its edit-permission is what gates
 			// the row update.
-			pagePath := strings.TrimPrefix(row.PagePath, "/")
-			if !deps.canEdit(ctx, pagePath) {
+			if !deps.canEdit(ctx, row.PagePath) {
 				return errorResult("access denied: no edit permission on " + row.PagePath), nil
 			}
 		} else if !deps.isAdmin(ctx) {
@@ -276,8 +273,7 @@ func registerDeleteDatabaseRowTool(srv *mcpsrv.MCPServer, deps Deps) {
 			// content. Treat their whole lifecycle as an edit-scoped
 			// operation so `insert` and `delete` share one permission
 			// boundary — anyone who can create a row can clean it up.
-			pagePath := strings.TrimPrefix(row.PagePath, "/")
-			if !deps.canEdit(ctx, pagePath) {
+			if !deps.canEdit(ctx, row.PagePath) {
 				return errorResult("access denied: no edit permission on " + row.PagePath), nil
 			}
 		} else if !deps.isAdmin(ctx) {

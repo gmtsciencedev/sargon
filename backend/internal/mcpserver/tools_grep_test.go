@@ -11,14 +11,13 @@ import (
 // scan-complete signalling, count-only mode.
 
 // Helper: build a page corpus as a map so the getMarkdown callback is
-// easy to configure per test. Map keys are slash-prefixed (matches what
-// Sitemap.ListAllPages returns); grepPages strips the slash before
-// calling getMarkdown, so the callback un-strips to look things up.
+// easy to configure per test. Map keys are canonical page paths, as
+// Sitemap.ListAllPages returns them and as grepPages passes them on.
 func newCorpus(pages map[string]string) (paths []string, getMarkdown func(string) (string, error)) {
 	for p := range pages {
 		paths = append(paths, p)
 	}
-	getMarkdown = func(p string) (string, error) { return pages["/"+p], nil }
+	getMarkdown = func(p string) (string, error) { return pages[p], nil }
 	return paths, getMarkdown
 }
 
@@ -127,7 +126,7 @@ func TestGrepPages_ACLSkip(t *testing.T) {
 	re := regexp.MustCompile(`token`)
 	res := grepPages(grepScanArgs{
 		pages: paths, re: re, limit: 100,
-		canView:     func(p string) bool { return p != "private" },
+		canView:     func(p string) bool { return p != "/private" },
 		getMarkdown: getMarkdown,
 	})
 	if len(res.Matches) != 1 {
@@ -156,7 +155,7 @@ func TestGrepPages_PathPrefixScope(t *testing.T) {
 	})
 	re := regexp.MustCompile(`hit`)
 	res := grepPages(grepScanArgs{
-		pages: paths, re: re, prefix: "qms", limit: 100,
+		pages: paths, re: re, prefix: "/qms", limit: 100,
 		getMarkdown: getMarkdown,
 	})
 	if len(res.Matches) != 2 {

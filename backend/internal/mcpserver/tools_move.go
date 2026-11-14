@@ -34,12 +34,11 @@ func mapMoveError(err error) string {
 // destinationFolder returns the parent folder of a destination path, used to
 // check the caller's edit permission on the target namespace.
 func destinationFolder(pagePath string) string {
-	pagePath = strings.TrimSuffix(pagePath, "/")
-	dir := path.Dir(pagePath)
+	dir := path.Dir(strings.TrimSuffix(pagePath, "/"))
 	if dir == "." || dir == "/" {
 		return "/"
 	}
-	return "/" + strings.TrimPrefix(dir, "/")
+	return dir
 }
 
 // ── move_page ──────────────────────────────────────────────────────────────
@@ -74,8 +73,8 @@ func registerMovePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Mover == nil {
 			return errorResult("move not supported by this store"), nil
 		}
-		fromPath := strings.TrimPrefix(strings.TrimSpace(req.GetString("from_path", "")), "/")
-		toPath := strings.TrimPrefix(strings.TrimSpace(req.GetString("to_path", "")), "/")
+		fromPath := canonicalPageArg(req.GetString("from_path", ""))
+		toPath := canonicalPageArg(req.GetString("to_path", ""))
 		if fromPath == "" || toPath == "" {
 			return errorResult("from_path and to_path are both required"), nil
 		}
@@ -91,7 +90,7 @@ func registerMovePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("access denied on source page"), nil
 		}
 		// ACL: edit on destination folder (a page path's namespace).
-		if !deps.canEdit(ctx, strings.TrimPrefix(destinationFolder(toPath), "/")) {
+		if !deps.canEdit(ctx, destinationFolder(toPath)) {
 			return errorResult("access denied on destination folder"), nil
 		}
 
@@ -104,8 +103,8 @@ func registerMovePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			}
 			return jsonResult(map[string]any{
 				"dry_run": true,
-				"from":    "/" + fromPath,
-				"to":      "/" + toPath,
+				"from":    fromPath,
+				"to":      toPath,
 				"preview": preview,
 			}), nil
 		}
@@ -116,7 +115,7 @@ func registerMovePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 		return jsonResult(map[string]any{
 			"moved":         true,
-			"from":          "/" + fromPath,
+			"from":          fromPath,
 			"to":            result.Page.Path,
 			"version":       result.Page.Meta.Version,
 			"updated_pages": result.UpdatedPages,
@@ -146,8 +145,8 @@ func registerConvertToNamespaceIndexTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Mover == nil {
 			return errorResult("move not supported by this store"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("page_path", ""))
+		if pagePath == "" {
 			return errorResult("page_path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -160,7 +159,7 @@ func registerConvertToNamespaceIndexTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 		return jsonResult(map[string]any{
 			"converted":   true,
-			"from":        "/" + pagePath,
+			"from":        pagePath,
 			"to":          result.Page.Path,
 			"version":     result.Page.Meta.Version,
 			"is_ns_index": result.Page.IsNamespaceIndex,
@@ -192,8 +191,8 @@ func registerDeletePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Store == nil {
 			return errorResult("page store not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("page_path", ""))
+		if pagePath == "" {
 			return errorResult("page_path is required"), nil
 		}
 		if !deps.canDelete(ctx, pagePath) {
@@ -206,7 +205,7 @@ func registerDeletePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 		return jsonResult(map[string]any{
 			"deleted":        true,
-			"page_path":      "/" + pagePath,
+			"page_path":      pagePath,
 			"orphaned_media": result.OrphanedMedia,
 		}), nil
 	})
@@ -230,7 +229,7 @@ func registerConvertToRegularPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Mover == nil {
 			return errorResult("move not supported by this store"), nil
 		}
-		pagePath := strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/"), "/")
+		pagePath := strings.TrimSuffix(canonicalPageArg(req.GetString("page_path", "")), "/")
 		if pagePath == "" {
 			return errorResult("page_path is required"), nil
 		}
@@ -244,7 +243,7 @@ func registerConvertToRegularPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 		return jsonResult(map[string]any{
 			"converted":   true,
-			"from":        "/" + pagePath + "/",
+			"from":        pagePath + "/",
 			"to":          result.Page.Path,
 			"version":     result.Page.Meta.Version,
 			"is_ns_index": result.Page.IsNamespaceIndex,

@@ -61,8 +61,9 @@ var textExtensions = map[string]bool{
 }
 
 // splitAttachmentPath cleans a caller-supplied attachment path and splits it
-// into (namespace, filename). The namespace is stored without a leading slash
-// (matching MediaStore semantics), the filename is bare (no slashes).
+// into (namespace, filename). The namespace is canonical — leading and
+// trailing slash, "/" at the root — so ns+name is the canonical attachment
+// path; the filename is bare (no slashes).
 // Refuses empty paths, paths without an extension, and paths that would
 // escape the content root.
 func splitAttachmentPath(raw string) (ns, name string, err error) {
@@ -74,7 +75,6 @@ func splitAttachmentPath(raw string) (ns, name string, err error) {
 	if cleaned == "/" || cleaned == "." {
 		return "", "", errors.New("invalid attachment path")
 	}
-	cleaned = strings.TrimPrefix(cleaned, "/")
 	name = path.Base(cleaned)
 	if name == "" || name == "." || name == "/" {
 		return "", "", errors.New("invalid attachment file name")
@@ -83,9 +83,20 @@ func splitAttachmentPath(raw string) (ns, name string, err error) {
 		return "", "", errors.New("attachments must have a file extension")
 	}
 	ns = strings.TrimSuffix(cleaned, name)
-	ns = strings.TrimSuffix(ns, "/")
 	return ns, name, nil
 }
+
+// The media store keys files and namespaces on paths without the leading
+// slash, unlike pages, links and the media reference index. These two
+// helpers convert a canonical path at the media-store call, and only there.
+
+// mediaKey converts a canonical attachment path for the media store:
+// "/docs/x.png" → "docs/x.png".
+func mediaKey(attPath string) string { return strings.TrimPrefix(attPath, "/") }
+
+// mediaNS converts a canonical namespace for the media store:
+// "/docs/" → "docs", "/" → "".
+func mediaNS(ns string) string { return strings.Trim(ns, "/") }
 
 // detectMime returns a best-effort MIME type for the given filename and
 // (optional) content sniff. Falls back to application/octet-stream.
@@ -162,11 +173,11 @@ func registerListAttachmentsTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.Media == nil {
 			return errorResult("media store not available"), nil
 		}
-		nsPath := strings.Trim(strings.TrimSpace(req.GetString("path", "")), "/")
-		if !deps.canView(ctx, nsPath+"/") {
-			return errorResult("access denied: no view permission on /" + nsPath), nil
+		nsPath := canonicalNamespaceArg(req.GetString("path", ""))
+		if !deps.canView(ctx, nsPath) {
+			return errorResult("access denied: no view permission on " + nsPath), nil
 		}
-		entries, err := deps.Media.List(nsPath)
+		entries, err := deps.Media.List(mediaNS(nsPath))
 		if err != nil {
 			return errorResult("list attachments: " + err.Error()), nil
 		}
@@ -194,7 +205,7 @@ func registerListAttachmentsTool(srv *mcpsrv.MCPServer, deps Deps) {
 			out = append(out, row)
 		}
 		return jsonResult(map[string]any{
-			"namespace":   "/" + nsPath,
+			"namespace":   nsPath,
 			"attachments": out,
 			"count":       len(out),
 		}), nil
@@ -239,26 +250,23 @@ func registerReadAttachmentTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if err != nil {
 			return errorResult(err.Error()), nil
 		}
-		relPath := name
-		if ns != "" {
-			relPath = ns + "/" + name
+		attPath := ns + name
+		if !deps.canView(ctx, attPath) {
+			return errorResult("access denied: no view permission on " + attPath), nil
 		}
-		if !deps.canView(ctx, relPath) {
-			return errorResult("access denied: no view permission on /" + relPath), nil
-		}
-		diskPath, err := deps.Media.ResolvePath(relPath)
+		diskPath, err := deps.Media.ResolvePath(mediaKey(attPath))
 		if err != nil {
 			return errorResult("resolve attachment: " + err.Error()), nil
 		}
 		info, statErr := os.Stat(diskPath)
 		if errors.Is(statErr, os.ErrNotExist) {
-			return errorResult("attachment not found: /" + relPath), nil
+			return errorResult("attachment not found: " + attPath), nil
 		}
 		if statErr != nil {
 			return errorResult("stat attachment: " + statErr.Error()), nil
 		}
 		if info.IsDir() {
-			return errorResult("path resolves to a namespace, not an attachment: /" + relPath), nil
+			return errorResult("path resolves to a namespace, not an attachment: " + attPath), nil
 		}
 
 		// Load the bytes once — we need them for the sha256 anyway. Skip when
@@ -271,20 +279,20 @@ func registerReadAttachmentTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 
 		result := map[string]any{
-			"path":       "/" + relPath,
+			"path":       attPath,
 			"name":       name,
-			"namespace":  "/" + ns,
+			"namespace":  ns,
 			"size":       info.Size(),
 			"updated_at": info.ModTime().UTC(),
 			"mime":       detectMime(name, nil),
 		}
 		if deps.MediaVersions != nil {
-			result["version"] = deps.MediaVersions.GetVersion(relPath)
+			result["version"] = deps.MediaVersions.GetVersion(mediaKey(attPath))
 		}
 		if deps.MediaRefs != nil {
 			// The ref index stores media keys canonically (leading slash);
 			// MediaVersions stores them without. Pass the right shape to each.
-			refs := deps.MediaRefs.GetReferencingPages("/" + relPath)
+			refs := deps.MediaRefs.GetReferencingPages(attPath)
 			result["referring_pages"] = refs
 			result["referring_count"] = len(refs)
 		}
@@ -442,8 +450,8 @@ func registerUploadAttachmentTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.RequireSummary && summary == "" {
 			return errorResult("summary is required — format '[AI: <tool>] <description>'"), nil
 		}
-		if !deps.canEdit(ctx, ns+"/") {
-			return errorResult("access denied: no edit permission on /" + ns), nil
+		if !deps.canEdit(ctx, ns) {
+			return errorResult("access denied: no edit permission on " + ns), nil
 		}
 
 		b64 := strings.TrimSpace(req.GetString("content_base64", ""))
@@ -499,9 +507,9 @@ func registerUploadAttachmentTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// from the attic entry — accepted trade-off; a MediaAtticEntry.Summary
 		// field + MediaAttic.ArchiveWithSummary is a separate refactor.
 		_ = summary
-		entry, putErr := deps.Media.Put(ns, name, bytes.NewReader(raw), overwrite, author)
+		entry, putErr := deps.Media.Put(mediaNS(ns), name, bytes.NewReader(raw), overwrite, author)
 		if errors.Is(putErr, storage.ErrMediaConflict) {
-			return errorResult("attachment already exists at /" + ns + "/" + name + " — pass overwrite: true to replace it"), nil
+			return errorResult("attachment already exists at " + ns + name + " — pass overwrite: true to replace it"), nil
 		}
 		if putErr != nil {
 			return errorResult("upload attachment: " + putErr.Error()), nil
@@ -513,7 +521,7 @@ func registerUploadAttachmentTool(srv *mcpsrv.MCPServer, deps Deps) {
 		result := map[string]any{
 			"path":       entry.Path,
 			"name":       entry.Name,
-			"namespace":  "/" + ns,
+			"namespace":  ns,
 			"size":       entry.Size,
 			"sha256":     digestHex,
 			"version":    entry.Version,
@@ -556,17 +564,14 @@ func registerUploadAttachmentInstructionsTool(srv *mcpsrv.MCPServer, deps Deps) 
 		if err != nil {
 			return errorResult(err.Error()), nil
 		}
-		relPath := name
-		if ns != "" {
-			relPath = ns + "/" + name
-		}
+		attPath := ns + name
 		overwrite := req.GetBool("overwrite", false)
 
-		canWrite := deps.canEdit(ctx, ns+"/")
+		canWrite := deps.canEdit(ctx, ns)
 
 		exists := false
 		if deps.Media != nil {
-			if disk, resolveErr := deps.Media.ResolvePath(relPath); resolveErr == nil {
+			if disk, resolveErr := deps.Media.ResolvePath(mediaKey(attPath)); resolveErr == nil {
 				if info, statErr := os.Stat(disk); statErr == nil && !info.IsDir() {
 					exists = true
 				}
@@ -579,7 +584,7 @@ func registerUploadAttachmentInstructionsTool(srv *mcpsrv.MCPServer, deps Deps) 
 			baseURL = "https://<your-wiki-host>"
 			hostNote = "the server's base_url is not configured; replace <your-wiki-host> with the hostname you use to reach the wiki"
 		}
-		uploadURL := baseURL + "/api/media/" + ns
+		uploadURL := baseURL + "/api/media/" + mediaNS(ns)
 
 		// Build the curl command. We keep --fail-with-body so HTTP 4xx/5xx
 		// causes a non-zero exit AND still prints the server's error body,
@@ -595,22 +600,22 @@ func registerUploadAttachmentInstructionsTool(srv *mcpsrv.MCPServer, deps Deps) 
 
 		warnings := []string{}
 		if !canWrite {
-			warnings = append(warnings, "you do not currently have edit permission on /"+ns+" — the upload will 403")
+			warnings = append(warnings, "you do not currently have edit permission on "+ns+" — the upload will 403")
 		}
 		if exists && !overwrite {
-			warnings = append(warnings, "a file already exists at /"+relPath+" — the upload will 409 unless you pass overwrite=true")
+			warnings = append(warnings, "a file already exists at "+attPath+" — the upload will 409 unless you pass overwrite=true")
 		}
 		if !exists && overwrite {
-			warnings = append(warnings, "overwrite=true was requested but no file exists at /"+relPath+" yet — it will just be created")
+			warnings = append(warnings, "overwrite=true was requested but no file exists at "+attPath+" yet — it will just be created")
 		}
 		if hostNote != "" {
 			warnings = append(warnings, hostNote)
 		}
 
 		result := map[string]any{
-			"target_path":    "/" + relPath,
+			"target_path":    attPath,
 			"target_name":    name,
-			"namespace":      "/" + ns,
+			"namespace":      ns,
 			"upload_url":     uploadURL,
 			"method":         "POST",
 			"form_field":     "file",
@@ -691,37 +696,34 @@ func registerDeleteAttachmentTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if err != nil {
 			return errorResult(err.Error()), nil
 		}
-		relPath := name
-		if ns != "" {
-			relPath = ns + "/" + name
-		}
-		if !deps.canDelete(ctx, ns+"/") {
-			return errorResult("access denied: no delete permission on /" + ns), nil
+		attPath := ns + name
+		if !deps.canDelete(ctx, ns) {
+			return errorResult("access denied: no delete permission on " + ns), nil
 		}
 		force := req.GetBool("force", false)
 		var referring []string
 		if deps.MediaRefs != nil {
 			// Ref index keys are canonical (leading slash).
-			referring = deps.MediaRefs.GetReferencingPages("/" + relPath)
+			referring = deps.MediaRefs.GetReferencingPages(attPath)
 		}
 		if len(referring) > 0 && !force {
 			return jsonResult(map[string]any{
 				"deleted":         false,
-				"path":            "/" + relPath,
+				"path":            attPath,
 				"referring_pages": referring,
 				"reason":          "attachment is still referenced; rewrite those pages first, or pass force: true to delete anyway",
 			}), nil
 		}
-		delErr := deps.Media.Delete(relPath)
+		delErr := deps.Media.Delete(mediaKey(attPath))
 		if errors.Is(delErr, os.ErrNotExist) {
-			return errorResult("attachment not found: /" + relPath), nil
+			return errorResult("attachment not found: " + attPath), nil
 		}
 		if delErr != nil {
 			return errorResult("delete attachment: " + delErr.Error()), nil
 		}
 		return jsonResult(map[string]any{
 			"deleted":         true,
-			"path":            "/" + relPath,
+			"path":            attPath,
 			"referring_pages": referring,
 			"forced":          force && len(referring) > 0,
 		}), nil

@@ -11,14 +11,6 @@ import (
 	"sargon/backend/internal/storage"
 )
 
-// presencePageKey returns the canonical page path used by the presence hub
-// (leading slash; trailing slash preserved for namespace indexes). The
-// tools receive `pagePath` with the leading slash already stripped, so we
-// reintroduce it here for the presence lookup.
-func presencePageKey(pagePath string) string {
-	return "/" + pagePath
-}
-
 // The draft-session tools let an agent act as a member of Sargon's
 // collaborative edit system. The flow mirrors what a human editor does in
 // the browser:
@@ -65,8 +57,8 @@ func registerEnterEditSessionTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.DraftEditor == nil {
 			return errorResult("draft editor not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -80,7 +72,7 @@ func registerEnterEditSessionTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// so a genuinely stale lock stays reclaimable within seconds
 		// of the tab going away.
 		if deps.Presence != nil {
-			if liveUser, live := deps.Presence.AnyLiveEditor(presencePageKey(pagePath)); live {
+			if liveUser, live := deps.Presence.AnyLiveEditor(pagePath); live {
 				return jsonResult(map[string]any{
 					"error":     "owner_active",
 					"message":   liveUser + " is actively editing this page in a live browser session — reclaiming would cut off that session. Wait for the tab to disconnect, or ask them to save and close, then retry.",
@@ -120,7 +112,7 @@ func registerEnterEditSessionTool(srv *mcpsrv.MCPServer, deps Deps) {
 		}
 
 		resp := map[string]any{
-			"path":         "/" + pagePath,
+			"path":         pagePath,
 			"edit_token":   editToken,
 			"markdown":     markdown,
 			"page_version": version,
@@ -158,8 +150,8 @@ func registerSaveEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.DraftEditor == nil {
 			return errorResult("draft editor not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -195,7 +187,7 @@ func registerSaveEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("save_edit_draft: " + err.Error()), nil
 		}
 		return jsonResult(map[string]any{
-			"path":   "/" + pagePath,
+			"path":   pagePath,
 			"status": "draft_saved",
 		}), nil
 	})
@@ -218,8 +210,8 @@ func registerReadEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.DraftEditor == nil {
 			return errorResult("draft editor not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canView(ctx, pagePath) {
@@ -271,7 +263,7 @@ func registerReadEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("read_edit_draft: " + err.Error()), nil
 		}
 		return jsonResult(map[string]any{
-			"path":         "/" + pagePath,
+			"path":         pagePath,
 			"markdown":     markdown,
 			"owner":        owner,
 			"since":        since,
@@ -312,8 +304,8 @@ func registerPublishEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.DraftPublisher == nil {
 			return errorResult("draft publisher not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -386,8 +378,8 @@ func registerDiscardEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 		if deps.DraftEditor == nil {
 			return errorResult("draft editor not available"), nil
 		}
-		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if strings.TrimSpace(req.GetString("path", "")) == "" {
+		pagePath := canonicalPageArg(req.GetString("path", ""))
+		if pagePath == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -401,7 +393,7 @@ func registerDiscardEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// silently blank the draft under them. A closed tab clears
 		// presence, so genuinely stale drafts stay discardable.
 		if deps.Presence != nil {
-			if liveUser, live := deps.Presence.AnyLiveEditor(presencePageKey(pagePath)); live {
+			if liveUser, live := deps.Presence.AnyLiveEditor(pagePath); live {
 				return jsonResult(map[string]any{
 					"error":   "owner_active",
 					"message": liveUser + " is actively editing this page in a live browser session — discarding would wipe unsaved work. Close the tab first, or publish/save from the browser, then retry.",
@@ -422,7 +414,7 @@ func registerDiscardEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			}
 		}
 		return jsonResult(map[string]any{
-			"path":   "/" + pagePath,
+			"path":   pagePath,
 			"status": "draft_discarded",
 		}), nil
 	})

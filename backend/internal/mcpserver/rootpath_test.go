@@ -30,7 +30,7 @@ func TestRootPage_ReadMetaWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deps.Store = rootSafeStore{fs}
+	deps.Store = fs
 
 	srv := mcpsrv.NewMCPServer("test", "0")
 	registerTools(srv, deps)

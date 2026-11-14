@@ -53,7 +53,7 @@ func TestBuildBrokenLinksList_HappyPath(t *testing.T) {
 	}
 	result := buildBrokenLinksList(brokenLinksScanArgs{
 		pages:        []string{"/a/page1", "/a/page2", "/a/clean"},
-		prefix:       "a",
+		prefix:       "/a",
 		limit:        100,
 		canView:      c.canView,
 		readMarkdown: c.readMarkdown,
@@ -111,10 +111,10 @@ func TestBuildBrokenLinksList_ACLSkip(t *testing.T) {
 			"a/visible": "[dead](/missing)\n",
 			"a/hidden":  "[alsobroken](/also-missing)\n",
 		},
-		acl: map[string]bool{"a/visible": true, "a/hidden": false},
+		acl: map[string]bool{"/a/visible": true, "/a/hidden": false},
 	}
 	result := buildBrokenLinksList(brokenLinksScanArgs{
-		pages: []string{"/a/visible", "/a/hidden"}, prefix: "a", limit: 100,
+		pages: []string{"/a/visible", "/a/hidden"}, prefix: "/a", limit: 100,
 		canView: c.canView, readMarkdown: c.readMarkdown, exists: c.exists,
 	})
 	if len(result.Broken) != 1 || result.Broken[0].Page != "/a/visible" {

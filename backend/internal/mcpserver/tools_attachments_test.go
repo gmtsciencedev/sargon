@@ -10,11 +10,11 @@ func TestSplitAttachmentPath(t *testing.T) {
 		wantFn  string
 		wantErr string
 	}{
-		{name: "flat file", in: "/foo/bar.png", wantNs: "foo", wantFn: "bar.png"},
-		{name: "deep file", in: "/a/b/c/d.jpg", wantNs: "a/b/c", wantFn: "d.jpg"},
-		{name: "leading slash optional", in: "foo/bar.png", wantNs: "foo", wantFn: "bar.png"},
-		{name: "root-level file", in: "/logo.svg", wantNs: "", wantFn: "logo.svg"},
-		{name: "collapses double slashes", in: "//a///b.png", wantNs: "a", wantFn: "b.png"},
+		{name: "flat file", in: "/foo/bar.png", wantNs: "/foo/", wantFn: "bar.png"},
+		{name: "deep file", in: "/a/b/c/d.jpg", wantNs: "/a/b/c/", wantFn: "d.jpg"},
+		{name: "leading slash optional", in: "foo/bar.png", wantNs: "/foo/", wantFn: "bar.png"},
+		{name: "root-level file", in: "/logo.svg", wantNs: "/", wantFn: "logo.svg"},
+		{name: "collapses double slashes", in: "//a///b.png", wantNs: "/a/", wantFn: "b.png"},
 		{name: "empty rejected", in: "", wantErr: "path is required"},
 		{name: "root rejected", in: "/", wantErr: "invalid attachment path"},
 		{name: "trailing-slash-only rejected", in: "/foo/", wantErr: "must have a file extension"},

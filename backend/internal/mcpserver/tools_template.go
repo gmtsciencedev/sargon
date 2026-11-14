@@ -58,8 +58,8 @@ func registerCreatePageFromTemplateTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("page store not available"), nil
 		}
 
-		templatePath := strings.TrimSpace(req.GetString("template_path", ""))
-		dstPath := strings.TrimSpace(req.GetString("path", ""))
+		templatePath := canonicalPageArg(req.GetString("template_path", ""))
+		dstPath := canonicalPageArg(req.GetString("path", ""))
 		title := strings.TrimSpace(req.GetString("title", ""))
 		summary := strings.TrimSpace(req.GetString("summary", ""))
 		if templatePath == "" || dstPath == "" || title == "" {
@@ -95,11 +95,10 @@ func registerCreatePageFromTemplateTool(srv *mcpsrv.MCPServer, deps Deps) {
 			// Draft on the destination would be unusual (it doesn't exist
 			// yet) but guard for the case where someone opened a new-page
 			// draft on it.
-			dstKey := strings.TrimPrefix(dstPath, "/")
-			if lock := deps.DraftState.GetLock(dstKey); lock.Owner != "" {
+			if lock := deps.DraftState.GetLock(dstPath); lock.Owner != "" {
 				return errorResult("destination page is locked by " + lock.Owner), nil
 			}
-			if draft, ok := deps.DraftState.FindAnyDraft(dstKey); ok {
+			if draft, ok := deps.DraftState.FindAnyDraft(dstPath); ok {
 				return errorResult("destination page has an unpublished draft by " + draft.Owner), nil
 			}
 		}
