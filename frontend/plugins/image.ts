@@ -145,8 +145,8 @@ const imageStyles = `
   right: -3px;
   width: 10px;
   height: 10px;
-  border: 1px solid #3f5f8f;
-  background: #dbe8ff;
+  border: 1px solid var(--gw-color-primary);
+  background: var(--gw-color-accent);
   border-radius: 2px;
   cursor: nwse-resize;
   z-index: 5;

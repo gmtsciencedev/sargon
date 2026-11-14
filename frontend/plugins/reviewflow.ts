@@ -917,8 +917,8 @@ const reviewflowStyles = `
 }
 
 .gowiki-rf-confirm-btn {
-  background: #1976d2;
-  color: #ffffff;
+  background: var(--gw-color-primary);
+  color: var(--gw-color-primary-fg);
   border: none;
   border-radius: var(--gw-radius-sm);
   padding: 4px 12px;
@@ -928,7 +928,7 @@ const reviewflowStyles = `
 }
 
 .gowiki-rf-confirm-btn:hover {
-  background: #1565c0;
+  background: var(--gw-color-primary-hover);
 }
 
 .gowiki-rf-diff-link {
@@ -1292,8 +1292,8 @@ const rfqStyles = `
 
 .gowiki-rfq-version-link {
   display: inline-block;
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--gw-color-info-bg);
+  color: var(--gw-color-info);
   padding: 1px 8px;
   border-radius: 10px;
   font-size: 12px;
@@ -1303,7 +1303,7 @@ const rfqStyles = `
 }
 
 .gowiki-rfq-version-link:hover {
-  background: #bbdefb;
+  background: var(--gw-color-info-hover-bg);
 }
 
 #app.gowiki-editing .gowiki-reviewflow-query {

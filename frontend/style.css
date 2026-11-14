@@ -1186,7 +1186,7 @@ a.gowiki-link-missing {
 }
 
 .gowiki-symbol-search:focus {
-  border-color: #4a9eff;
+  border-color: var(--gw-color-link);
 }
 
 .gowiki-symbol-body {
@@ -1226,8 +1226,8 @@ a.gowiki-link-missing {
 }
 
 .gowiki-symbol-item--selected {
-  background: #dce8ff;
-  outline: 2px solid #4a9eff;
+  background: var(--gw-color-accent);
+  outline: 2px solid var(--gw-color-link);
   outline-offset: -2px;
 }
 
@@ -1714,7 +1714,7 @@ a.gowiki-link-missing {
   display: block;
   text-align: left;
   background: var(--gw-color-surface-alt);
-  border: 1px solid #d2d9e5;
+  border: 1px solid var(--gw-color-border);
   border-radius: 5px;
   padding: 10px 14px;
   font: inherit;
@@ -1724,7 +1724,7 @@ a.gowiki-link-missing {
 
 .gowiki-template-picker-row:hover {
   background: var(--gw-color-accent);
-  border-color: #1a73e8;
+  border-color: var(--gw-color-primary);
 }
 
 .gowiki-template-picker-label {
@@ -1968,9 +1968,9 @@ a.gowiki-link-missing {
 }
 
 .gowiki-tombstone-banner {
-  background: var(--gw-color-info-bg, #e3f2fd);
-  color: var(--gw-color-info, #1565c0);
-  border: 1px solid var(--gw-color-info, #1565c0);
+  background: var(--gw-color-info-bg);
+  color: var(--gw-color-info);
+  border: 1px solid var(--gw-color-info);
   border-radius: var(--gw-radius-sm);
   padding: 10px 14px;
   margin-bottom: 14px;
@@ -1993,8 +1993,8 @@ a.gowiki-link-missing {
 }
 
 .gowiki-tombstone-banner-link:hover {
-  background: var(--gw-color-info, #1565c0);
-  color: #fff;
+  background: var(--gw-color-info);
+  color: var(--gw-color-primary-fg);
 }
 
 .gowiki-tombstone-intro {
@@ -2033,7 +2033,7 @@ a.gowiki-link-missing {
 
 .gowiki-history-version-tag {
   display: inline-block;
-  background: #e3f2fd;
+  background: var(--gw-color-info-bg);
   color: var(--gw-color-info);
   padding: 1px 8px;
   border-radius: 10px;
@@ -2044,7 +2044,7 @@ a.gowiki-link-missing {
 }
 
 .gowiki-history-version-tag:hover {
-  background: #bbdefb;
+  background: var(--gw-color-info-hover-bg);
   text-decoration: none;
 }
 
@@ -2297,13 +2297,13 @@ a.gowiki-link-missing {
 }
 
 .gowiki-admin-btn-primary {
-  background: #1a56db;
-  color: #ffffff;
-  border-color: #1a56db;
+  background: var(--gw-color-primary);
+  color: var(--gw-color-primary-fg);
+  border-color: var(--gw-color-primary);
 }
 
 .gowiki-admin-btn-primary:hover {
-  background: #134fc0;
+  background: var(--gw-color-primary-hover);
 }
 
 .gowiki-admin-btn-small {

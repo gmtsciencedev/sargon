@@ -229,13 +229,13 @@ const versionLinkStyles = `
   padding: 2px 8px;
   border-radius: 4px;
   background: var(--gw-color-info-bg);
-  border: 1px solid #bbdefb;
+  border: 1px solid var(--gw-color-info-hover-bg);
   font-size: 13px;
   color: var(--gw-color-info);
 }
 
 .gowiki-vl-link:hover {
-  background: #bbdefb;
+  background: var(--gw-color-info-hover-bg);
 }
 
 .gowiki-vl-version-badge {

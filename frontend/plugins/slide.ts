@@ -543,7 +543,7 @@ const slidesStyles = `
   bottom: 0;
   left: 0;
   height: 3px;
-  background: #4e79a7;
+  background: var(--gw-color-primary);
   transition: width 0.15s ease;
 }
 .gowiki-slides-counter {

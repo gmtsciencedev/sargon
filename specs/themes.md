@@ -325,12 +325,15 @@ Every themeable value is a CSS custom property declared at `:root`. Naming conve
 | `--gw-color-success` | `#2e7d32` | `#7fcf88` | Done-state indicators |
 | `--gw-color-warning` | `#f57f17` | `#ffb74d` | High-priority chips, overdue |
 | `--gw-color-error` | `#c62828` | `#ff6b6b` | Error text, cancelled items |
+| `--gw-color-info` | `var(--gw-color-link)` | `#64b5f6` | Informational chips and banners (version/reviewflow links) |
+| `--gw-color-info-bg` | `var(--gw-color-accent)` | `#1e2f42` | Background of informational chips |
+| `--gw-color-table-head-bg` | `var(--gw-color-accent)` | `#3a476a` | Table header background |
 | `--gw-color-code-bg` | `#f6f8fa` | `#2d2d2d` | Code block backgrounds |
 | `--gw-color-code-text` | `#24292e` | `#e6e6e6` | Code text fallback |
 | `--gw-color-highlight` | `#fff3bf` | `#5b4e1c` | Search match, `==highlight==` |
-| `--gw-color-selection` | `#b5d7ff` | `#264f78` | Text selection (editor) |
+| `--gw-color-selection` | 28% `link` on `bg` | `#264f78` | Text and table-cell selection (editor) |
 
-Semantic roles (not colors) — each plugin picks the right role rather than the hex.
+Semantic roles (not colors) — each plugin picks the right role rather than the hex. In the light theme, `info`, `info-bg`, `table-head-bg` and `selection` derive from `link` and `accent`, so a `palette_overrides` entry for those two recolors them too. Interface chrome (buttons, chips, focus rings, handles) always takes a palette variable; a fixed hex is reserved for colors that carry their own meaning: named cell and highlight colors, chart series, callout kinds, code themes, third-party sign-in buttons.
 
 ### 2.2 Typography (6 vars)
 

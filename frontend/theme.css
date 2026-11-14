@@ -11,7 +11,7 @@
   /* ── Palette (light) ─────────────────────────────────────────────── */
   --gw-color-bg: #ffffff; /* page background */
   --gw-color-surface: #fafafa; /* cards, modals, admin panels */
-  --gw-color-surface-alt: #f5f8ff; /* subtle alternative surface (hover states, chips) */
+  --gw-color-surface-alt: #f4f8f6; /* subtle alternative surface (hover states, chips) */
   --gw-color-text: #222222; /* body text */
   --gw-color-text-soft: #555555; /* soft body text (references, footnotes) */
   --gw-color-muted: #666666; /* secondary text */
@@ -42,20 +42,21 @@
   --gw-color-warning-bg: #fff8e1;
   --gw-color-error: #c62828; /* error text, cancelled items */
   --gw-color-error-bg: #ffebee;
-  --gw-color-info: #1565c0;
-  --gw-color-info-bg: #e3f2fd;
+  --gw-color-info: var(--gw-color-link); /* informational chips and banners follow the brand */
+  --gw-color-info-bg: var(--gw-color-accent);
+  --gw-color-info-hover-bg: color-mix(in srgb, var(--gw-color-info) 22%, var(--gw-color-bg));
 
   --gw-color-code-bg: #f6f8fa; /* code block backgrounds */
   --gw-color-code-text: #24292e;
   --gw-color-code-inline-bg: #eff1f3;
 
   --gw-color-highlight: #fff3bf; /* search match, ==highlight== */
-  --gw-color-selection: #b5d7ff; /* editor text selection */
+  --gw-color-selection: color-mix(in srgb, var(--gw-color-link) 28%, var(--gw-color-bg)); /* editor text selection */
 
   --gw-color-invalid-bg: #fff5f5; /* tint for pages with unvalidated reviewflow */
 
-  /* Table header — muted bg on light, punchier slate on dark for contrast */
-  --gw-color-table-head-bg: #f2f2f2;
+  /* Table header — brand tint on light, punchier slate on dark for contrast */
+  --gw-color-table-head-bg: var(--gw-color-accent);
   --gw-color-table-head-fg: #222222;
 
   /* ── Typography ───────────────────────────────────────────────────── */

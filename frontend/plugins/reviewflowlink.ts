@@ -292,7 +292,7 @@ const reviewflowLinkStyles = `
 }
 
 .gowiki-rfl-inline-badge:hover {
-  background: #bbdefb;
+  background: var(--gw-color-info-hover-bg);
 }
 
 #app.gowiki-editing .gowiki-reviewflow-link.ProseMirror-selectednode {

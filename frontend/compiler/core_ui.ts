@@ -455,7 +455,7 @@ function buildPanel(
       inlineSep.style.cssText = "border-top:1px solid #e0e0c0;margin-top:4px;padding-top:4px;text-align:right"
       const inlineBtn = document.createElement("button")
       inlineBtn.type = "button"
-      inlineBtn.style.cssText = "background:none;border:none;color:#1565c0;font-size:11px;cursor:pointer;padding:0"
+      inlineBtn.style.cssText = "background:none;border:none;color:var(--gw-color-link);font-size:11px;cursor:pointer;padding:0"
       inlineBtn.textContent = "Convert to inline"
       inlineBtn.title = "Move image back inline (removes size, align, caption properties)"
       inlineBtn.addEventListener("click", () => {

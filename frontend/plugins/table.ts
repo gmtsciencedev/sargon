@@ -1008,7 +1008,7 @@ html[data-theme="dark"] .ProseMirror th[data-cell-color]:not([data-cell-color="r
 }
 
 .ProseMirror .selectedCell {
-  background: #cce5ff;
+  background: var(--gw-color-selection);
 }
 
 /* Formula display atom — inline result shown in formula cells */

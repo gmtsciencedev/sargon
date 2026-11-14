@@ -17,6 +17,15 @@ project's design invariants and `specs/` for the dialect specification.
   `#e7f1ec`. A wiki that wants another color sets
   `themes.palette_overrides` in its `config.yaml`; the dark palette is
   unchanged.
+- **The whole interface follows the theme.** Table headers, cell and
+  text selection, informational chips and banners (version and
+  reviewflow links, the deleted-page banner), admin and reviewflow
+  primary buttons, the image resize handle, the slide progress bar and
+  the template picker now take their colors from the palette instead of
+  a fixed blue, so `palette_overrides` recolors all of them. In the light
+  theme `info` and `table-head-bg` derive from `link` and `accent`.
+  Semantic colors stay fixed: the named cell and highlight colors, chart
+  series, callout kinds, code themes and the Microsoft sign-in button.
 
 ### Fixed
 
