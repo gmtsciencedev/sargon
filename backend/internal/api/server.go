@@ -40,7 +40,7 @@ var openapiJSON []byte
 
 // Version is the Sargon software version string. Bump before tagging a
 // release; the site-info endpoint and any manifest ride on this constant.
-const Version = "1.0.0-rc.6"
+const Version = "1.0.0"
 
 // BuildCommit and BuildDate are injected at build time via -ldflags:
 //

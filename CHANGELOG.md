@@ -10,6 +10,20 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
+Nothing pending — the working tree matches `v1.0.0`.
+
+## [1.0.0] — 2026-11-14
+
+First stable release of Sargon. It carries everything in the six
+release candidates, which have run the first production deployment
+since late September, plus a PDF export tool for agents and fixes to
+the printed PDF that a review of exported records turned up. The
+bijective Markdown dialect, the storage layout and the HTTP and MCP
+interfaces are now stable: later 1.x releases keep them compatible.
+
+Upgrading from rc.6 needs one step on the server — a colour emoji
+font — described in `UPGRADE.md`.
+
 ### Added
 
 - **`export_page_pdf` MCP tool.** An agent can export a page to PDF —
@@ -34,6 +48,13 @@ project's design invariants and `specs/` for the dialect specification.
 - **🔒 printed as an empty box in PDFs** ("☐ Signed"): the server's
   Chrome had no emoji font. Deployments need `fonts-noto-color-emoji`;
   see `UPGRADE.md`.
+
+### Documentation
+
+- `UPGRADE.md`: upgrade procedure with backup, rollback and per-version
+  notes.
+- `docs/deploy.md`: running several independent wikis on one server
+  behind a reverse proxy.
 
 ## [1.0.0-rc.6] — 2026-10-30
 

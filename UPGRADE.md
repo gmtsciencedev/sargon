@@ -28,7 +28,7 @@ Each release on [GitHub](https://github.com/sargonwiki/sargon/releases)
 carries a server binary per platform and the frontend bundle:
 
 ```bash
-TAG=v1.0.0-rc.6
+TAG=v1.0.0
 gh release download "$TAG" -R sargonwiki/sargon \
   -p "sargon-server-linux-amd64" -p "sargon-frontend-dist-$TAG.tar.gz"
 ```
@@ -95,7 +95,7 @@ edited under the new version and must be discarded.
 
 ## Version notes
 
-### 1.0.0-rc.6 → next release
+### 1.0.0-rc.6 → 1.0.0
 
 - Install a colour emoji font on the server so PDF exports print status
   icons such as 🔒: `sudo apt install fonts-noto-color-emoji`, then

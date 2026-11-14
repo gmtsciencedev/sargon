@@ -150,7 +150,7 @@ Rendering is done entirely by ProseMirror. There is no separate rendering pipeli
 
 ### Release status
 
-The v0.1 through v0.9 milestones are complete and deployed. The next tag is **v1.0.0-rc.1**, cutting a release candidate before v1.0.0. See `CHANGELOG.md` for the full journey.
+**v1.0.0** is released (2026-11-14), after six release candidates. See `CHANGELOG.md` for the full journey. Versioning and the RC rule for later releases are in `DEV.md`.
 
 ## Milestone targets
 
