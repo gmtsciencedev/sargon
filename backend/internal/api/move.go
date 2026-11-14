@@ -50,6 +50,18 @@ func (s *Server) handleMovePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	author := UsernameFromContext(r.Context())
+
+	// The route checked edit on the source. A move also writes the
+	// destination, so the caller needs edit there too — or a user confined
+	// to one namespace could move pages out of it.
+	if req.To != "" && s.aclStore != nil {
+		dest := "/" + strings.TrimPrefix(strings.TrimSpace(req.To), "/")
+		if !s.aclStore.CheckPermission(author, s.getUserGroups(author), dest, "edit") {
+			writeError(w, http.StatusForbidden, "access denied: no edit permission on "+dest)
+			return
+		}
+	}
+
 	mover, ok := s.store.(PageMover)
 	if !ok {
 		writeError(w, http.StatusNotImplemented, "move not supported")

@@ -29,6 +29,11 @@ project's design invariants and `specs/` for the dialect specification.
 
 ### Fixed
 
+- **Moving a page needs edit permission on the destination.** The REST
+  move endpoint checked edit permission on the source page only, so a
+  user allowed to edit one namespace could move pages out of it to any
+  path. It now refuses with 403 unless the caller may edit the
+  destination too, as the MCP `move_page` tool already did.
 - **Writing `/docs/` creates the namespace index.** A write to a path
   ending with `/` (REST `PUT /api/pages/docs/`, a move to `/docs/`)
   created the leaf page `docs.md` when the `docs/` directory did not
