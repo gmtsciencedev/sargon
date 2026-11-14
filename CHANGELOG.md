@@ -10,7 +10,17 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
-Nothing pending — the working tree matches `v1.1.0-rc.2`.
+### Fixed
+
+- **MCP tools could not read or write the root page.** The tools drop
+  the leading slash from page paths, which turns `/` into an empty
+  path: `get_page_meta` and the other single-page tools refused it as
+  missing, and `read_pages_batch` and `write_page` passed it to the
+  page store, which rejects an empty path. The root page now works
+  like any other page through the MCP. Shipped as a mid-rc fix.
+- **`write_page` and `edit_page` crashed on a deployment without
+  reviewflow**, because the validated-page guard received a nil
+  service it could not recognise as nil.
 
 ## [1.1.0-rc.2] — 2026-11-14
 

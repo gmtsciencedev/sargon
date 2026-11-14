@@ -156,7 +156,7 @@ func registerEditPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("page store not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		summary := strings.TrimSpace(req.GetString("summary", ""))
@@ -201,7 +201,7 @@ func registerEditPageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// force=true. dry_run skips the guard so an agent can still
 		// preview what an edit WOULD do without touching the page.
 		if !dryRun {
-			if refusal := refuseIfValidatedWithoutForce(deps.Reviewflow, pagePath, force); refusal != nil {
+			if refusal := refuseIfValidatedWithoutForce(deps.reviewflowGetter(), pagePath, force); refusal != nil {
 				return refusal, nil
 			}
 		}

@@ -134,6 +134,16 @@ type reviewflowStatusGetter interface {
 // (whose signature will disappear) to the human before retrying.
 //
 // Returns nil when the write is allowed to proceed.
+// reviewflowGetter returns the reviewflow service as the guard's interface,
+// or a nil interface when the deployment has none: a nil *Service wrapped
+// in the interface would pass the guard's nil check and panic.
+func (d Deps) reviewflowGetter() reviewflowStatusGetter {
+	if d.Reviewflow == nil {
+		return nil
+	}
+	return d.Reviewflow
+}
+
 func refuseIfValidatedWithoutForce(rf reviewflowStatusGetter, pagePath string, force bool) *mcpgo.CallToolResult {
 	if force || rf == nil {
 		return nil
@@ -357,7 +367,7 @@ func registerGetPageMetaTool(srv *mcpsrv.MCPServer, deps Deps) {
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 		pagePath := strings.TrimSpace(req.GetString("path", ""))
 		pagePath = strings.TrimPrefix(pagePath, "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canView(ctx, pagePath) {
@@ -776,7 +786,7 @@ func registerGetReviewflowStatusTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("reviewflow service not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canView(ctx, pagePath) {
@@ -1238,7 +1248,7 @@ func registerPreviewPageDiffTool(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		newMarkdown, err := req.RequireString("markdown")
@@ -1306,7 +1316,7 @@ func registerWritePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		newMarkdown, err := req.RequireString("markdown")
@@ -1330,7 +1340,7 @@ func registerWritePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 		// Fully-validated-page guard: refuse writes that would silently
 		// invalidate every signature unless the caller opted in with
 		// force=true.
-		if refusal := refuseIfValidatedWithoutForce(deps.Reviewflow, pagePath, force); refusal != nil {
+		if refusal := refuseIfValidatedWithoutForce(deps.reviewflowGetter(), pagePath, force); refusal != nil {
 			return refusal, nil
 		}
 

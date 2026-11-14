@@ -66,7 +66,7 @@ func registerEnterEditSessionTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("draft editor not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -159,7 +159,7 @@ func registerSaveEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("draft editor not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -219,7 +219,7 @@ func registerReadEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("draft editor not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canView(ctx, pagePath) {
@@ -313,7 +313,7 @@ func registerPublishEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("draft publisher not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -387,7 +387,7 @@ func registerDiscardEditDraftTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("draft editor not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("path", "")) == "" {
 			return errorResult("path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {

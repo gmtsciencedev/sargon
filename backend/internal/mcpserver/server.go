@@ -316,6 +316,9 @@ func NewHandler(deps Deps) http.Handler {
 	if deps.ExtractUsername == nil {
 		deps.ExtractUsername = func(context.Context) string { return "" }
 	}
+	if deps.Store != nil {
+		deps.Store = rootSafeStore{deps.Store}
+	}
 
 	srv := mcpsrv.NewMCPServer(
 		serverName,

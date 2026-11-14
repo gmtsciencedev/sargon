@@ -26,7 +26,7 @@ func registerListPageHistoryTool(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
 			return errorResult("page_path is required"), nil
 		}
 		if deps.Attic == nil {
@@ -66,7 +66,7 @@ func registerReadPageVersionTool(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
 			return errorResult("page_path is required"), nil
 		}
 		version := int64(req.GetInt("version", 0))
@@ -260,7 +260,7 @@ func registerDiffPageVersionsTool(srv *mcpsrv.MCPServer, deps Deps) {
 	)
 	srv.AddTool(tool, func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
 			return errorResult("page_path is required"), nil
 		}
 		fromV := int64(req.GetInt("from_version", 0))

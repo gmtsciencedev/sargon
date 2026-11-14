@@ -147,7 +147,7 @@ func registerConvertToNamespaceIndexTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("move not supported by this store"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
 			return errorResult("page_path is required"), nil
 		}
 		if !deps.canEdit(ctx, pagePath) {
@@ -193,7 +193,7 @@ func registerDeletePageTool(srv *mcpsrv.MCPServer, deps Deps) {
 			return errorResult("page store not available"), nil
 		}
 		pagePath := strings.TrimPrefix(strings.TrimSpace(req.GetString("page_path", "")), "/")
-		if pagePath == "" {
+		if strings.TrimSpace(req.GetString("page_path", "")) == "" {
 			return errorResult("page_path is required"), nil
 		}
 		if !deps.canDelete(ctx, pagePath) {
