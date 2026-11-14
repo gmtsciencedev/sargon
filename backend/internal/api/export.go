@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -38,6 +39,10 @@ func (s *Server) handleExportPDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pdfBuf, err := s.printPagePDF(r.Context(), pagePath, sessionID, baseURL, host)
+	if errors.Is(err, errExportPageNotFound) {
+		http.Error(w, "page not found: "+pagePath, http.StatusNotFound)
+		return
+	}
 	if err != nil {
 		http.Error(w, fmt.Sprintf("PDF generation failed: %v", err), http.StatusInternalServerError)
 		return
@@ -68,11 +73,20 @@ func (s *Server) ExportPagePDF(ctx context.Context, pagePath, username string) (
 	return s.printPagePDF(ctx, pagePath, sessionID, baseURL, host)
 }
 
+// errExportPageNotFound is returned by printPagePDF for a page that does
+// not exist.
+var errExportPageNotFound = errors.New("page not found")
+
 // printPagePDF is the chromedp path shared by the HTTP export endpoint and
 // the MCP tool: it opens <baseURL><pagePath>?export=pdf with the given
 // session, waits for the [data-export-ready] marker, and prints A4 with the
 // running header and footer.
 func (s *Server) printPagePDF(baseCtx context.Context, pagePath, sessionID, baseURL, host string) ([]byte, error) {
+	// A missing page never sets the ready marker: refuse before starting
+	// Chrome instead of waiting out the timeout.
+	if s.store != nil && !s.store.Exists(pagePath) {
+		return nil, errExportPageNotFound
+	}
 	pageURL := fmt.Sprintf("%s%s?export=pdf", baseURL, pagePath)
 
 	ctx, cancel := chromedp.NewContext(s.browserAllocCtx)
@@ -89,8 +103,20 @@ func (s *Server) printPagePDF(baseCtx context.Context, pagePath, sessionID, base
 				Do(ctx)
 		}))
 	}
+	// The page document itself answering with an HTTP error (frontend not
+	// served, host refused) also means the marker never appears: fail on
+	// the status instead of waiting out the timeout.
 	tasks = append(tasks,
-		chromedp.Navigate(pageURL),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			resp, err := chromedp.RunResponse(ctx, chromedp.Navigate(pageURL))
+			if err != nil {
+				return err
+			}
+			if resp != nil && resp.Status >= 400 {
+				return fmt.Errorf("%s answered HTTP %d", pageURL, resp.Status)
+			}
+			return nil
+		}),
 		chromedp.WaitVisible(`[data-export-ready]`, chromedp.ByQuery),
 	)
 

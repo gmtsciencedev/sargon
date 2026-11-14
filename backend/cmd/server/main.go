@@ -156,13 +156,16 @@ func serveTLS(handler http.Handler, certDir string, domains []string, onStop fun
 		}
 	}()
 
+	// autocert's TLS config advertises acme-tls/1 next to h2 and
+	// http/1.1, so Let's Encrypt can validate over TLS-ALPN-01 on :443
+	// instead of logging a refused handshake before falling back to
+	// HTTP-01 on :80.
+	tlsConfig := m.TLSConfig()
+	tlsConfig.MinVersion = tls.VersionTLS12
 	httpsServer := &http.Server{
-		Addr:    ":443",
-		Handler: handler,
-		TLSConfig: &tls.Config{
-			GetCertificate: m.GetCertificate,
-			MinVersion:     tls.VersionTLS12,
-		},
+		Addr:      ":443",
+		Handler:   handler,
+		TLSConfig: tlsConfig,
 	}
 	go func() {
 		log.Printf("https: listening on :443 (domains: %v)", domains)
