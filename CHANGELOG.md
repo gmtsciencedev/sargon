@@ -34,6 +34,13 @@ project's design invariants and `specs/` for the dialect specification.
   user allowed to edit one namespace could move pages out of it to any
   path. It now refuses with 403 unless the caller may edit the
   destination too, as the MCP `move_page` tool already did.
+- **A namespace index is returned as `/docs/`.** `GET /api/pages/docs/`
+  returned `"path": "/docs"` for the namespace index; the path now comes
+  from the file found, so it is canonical however the page was asked for.
+- **Admins can discard a draft whose lock is gone.** A draft can outlive
+  its lock and still blocks API writes to the page; `DELETE
+  /api/admin/drafts/{path}` answered 404 for it. It now finds the owner
+  from the draft file.
 - **Writing `/docs/` creates the namespace index.** A write to a path
   ending with `/` (REST `PUT /api/pages/docs/`, a move to `/docs/`)
   created the leaf page `docs.md` when the `docs/` directory did not

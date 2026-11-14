@@ -35,13 +35,20 @@ func (s *Server) handleAdminDiscardDraft(w http.ResponseWriter, r *http.Request)
 
 	adminUser := UsernameFromContext(r.Context())
 
-	lock := s.draftManager.GetLock(pagePath)
-	if lock.Owner == "" {
+	// The lock names the active editor. A draft can outlive its lock
+	// (session crash, expired lock); it still blocks external writes, so
+	// it is found by its file when no lock is left. Each call discards one
+	// owner's draft; repeat until 404 to clear several.
+	draftOwner := s.draftManager.GetLock(pagePath).Owner
+	if draftOwner == "" {
+		if draft, ok := s.draftManager.FindAnyDraft(pagePath); ok {
+			draftOwner = draft.Owner
+		}
+	}
+	if draftOwner == "" {
 		writeError(w, http.StatusNotFound, "no draft exists for this page")
 		return
 	}
-
-	draftOwner := lock.Owner
 
 	// Force discard: admin discards another user's draft.
 	err := s.draftManager.AdminDiscardDraft(pagePath, draftOwner)

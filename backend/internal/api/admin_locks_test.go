@@ -57,6 +57,11 @@ func (m *locksStubDraftManager) GetLock(pagePath string) storage.DraftLock {
 	return m.lockByPath[pagePath]
 }
 func (m *locksStubDraftManager) FindAnyDraft(pagePath string) (storage.DraftInfo, bool) {
+	for _, d := range m.drafts {
+		if d.Page == pagePath {
+			return d, true
+		}
+	}
 	return storage.DraftInfo{}, false
 }
 func (m *locksStubDraftManager) ListLocks() []storage.LockInfo   { return m.locks }
@@ -203,6 +208,21 @@ func TestAdminDiscardDraft_HappyPath(t *testing.T) {
 	}
 	if len(stub.discardCalls) != 1 || stub.discardCalls[0] != "/page|alice" {
 		t.Errorf("discardCalls = %v, want [/page|alice]", stub.discardCalls)
+	}
+}
+
+// TestAdminDiscardDraft_OrphanDraft — a draft whose lock is gone still
+// blocks external writes; admin discard finds its owner from the file.
+func TestAdminDiscardDraft_OrphanDraft(t *testing.T) {
+	t.Parallel()
+	s, stub := newLocksTestServer(t)
+	stub.drafts = []storage.DraftInfo{{Page: "/page", Owner: "bob"}}
+	rec := callAdmin(s.handleAdminDiscardDraft, http.MethodDelete, "/api/admin/drafts/page", map[string]string{"*": "/page"}, nil, "root")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(stub.discardCalls) != 1 || stub.discardCalls[0] != "/page|bob" {
+		t.Errorf("discardCalls = %v, want [/page|bob]", stub.discardCalls)
 	}
 }
 

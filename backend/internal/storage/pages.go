@@ -286,9 +286,12 @@ func (s *FileStore) Get(pagePath string) (Page, error) {
 		isIndex = true
 	}
 
-	// Normalize path: strip trailing /index so the returned path is canonical.
-	if isIndex && strings.HasSuffix(normalized, "/index") {
-		normalized = CanonicalPath(normalized)
+	// The returned path is the canonical path of the file found: a
+	// namespace index ends with "/" however it was asked for.
+	if isIndex {
+		if rel, relErr := filepath.Rel(s.contentRoot, contentPath); relErr == nil {
+			normalized = CanonicalPath(strings.TrimSuffix(filepath.ToSlash(rel), ".md"))
+		}
 	}
 
 	content, err := os.ReadFile(contentPath)
