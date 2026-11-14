@@ -300,6 +300,15 @@ database. Other rules:
 - Two wikis with the same hostname or the same data directory stop
   the server at startup with an error naming both.
 
+### Logo and favicon
+
+Each wiki shows its own logo and favicon when it has them: put
+`logo.png` (or `.svg`, `.jpg`, `.jpeg`, `.gif`, `.webp`) and
+`favicon.png` (or `.ico`, `.svg`) at the root of its content — upload
+them on the root page `/` from the media manager, or copy them into
+`data/content/`. A square favicon of at least 180×180 pixels also
+serves as the home-screen icon. A wiki without its own uses Sargon's.
+
 ### systemd service
 
 The service from [step 6](#6-create-the-systemd-service) with a

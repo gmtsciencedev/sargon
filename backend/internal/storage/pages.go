@@ -2045,6 +2045,22 @@ func fileExists(path string) bool {
 	return !info.IsDir()
 }
 
+// faviconExtensions is the ordered list of file extensions checked for a
+// wiki's own favicon.
+var faviconExtensions = []string{".png", ".ico", ".svg"}
+
+// ResolveFavicon returns the filesystem path of the wiki's own favicon
+// (favicon.{png,ico,svg} at the content root), or "" when it has none.
+func (s *FileStore) ResolveFavicon() string {
+	for _, ext := range faviconExtensions {
+		fp := filepath.Join(s.contentRoot, "favicon"+ext)
+		if fileExists(fp) {
+			return fp
+		}
+	}
+	return ""
+}
+
 // logoExtensions is the ordered list of file extensions to check for a site logo.
 var logoExtensions = []string{".png", ".svg", ".jpg", ".jpeg", ".gif", ".webp"}
 

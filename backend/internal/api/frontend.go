@@ -10,6 +10,21 @@ import (
 	"strings"
 )
 
+// FaviconResolver finds a wiki's own favicon file. Implemented by the
+// page store alongside ResolveLogo.
+type FaviconResolver interface {
+	ResolveFavicon() string
+}
+
+// bundleIconPaths are the icons index.html links. A wiki that has its own
+// favicon file serves it under every one of these paths, so the browser
+// tab, bookmarks and home-screen icon all show it.
+var bundleIconPaths = map[string]bool{
+	"/icons/favicon-32.png":       true,
+	"/icons/favicon.ico":          true,
+	"/icons/apple-touch-icon.png": true,
+}
+
 func (s *Server) handleFrontend(w http.ResponseWriter, r *http.Request) {
 	if !s.serveWeb {
 		http.NotFound(w, r)
@@ -18,6 +33,18 @@ func (s *Server) handleFrontend(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		http.NotFound(w, r)
 		return
+	}
+
+	if bundleIconPaths[r.URL.Path] {
+		if fr, ok := s.logoResolver.(FaviconResolver); ok {
+			if fp := fr.ResolveFavicon(); fp != "" {
+				// Revalidate on every load so a replaced favicon shows
+				// up without waiting for the browser cache to expire.
+				w.Header().Set("Cache-Control", "no-cache")
+				http.ServeFile(w, r, fp)
+				return
+			}
+		}
 	}
 
 	requestPath := filepath.Clean(strings.TrimPrefix(r.URL.Path, "/"))
@@ -76,6 +103,18 @@ func canServeAsAttachmentPath(requestPath string) bool {
 }
 
 func (s *Server) handleFilePath(w http.ResponseWriter, r *http.Request) {
+	if bundleIconPaths[r.URL.Path] {
+		if fr, ok := s.logoResolver.(FaviconResolver); ok {
+			if fp := fr.ResolveFavicon(); fp != "" {
+				// Revalidate on every load so a replaced favicon shows
+				// up without waiting for the browser cache to expire.
+				w.Header().Set("Cache-Control", "no-cache")
+				http.ServeFile(w, r, fp)
+				return
+			}
+		}
+	}
+
 	requestPath := filepath.Clean(strings.TrimPrefix(r.URL.Path, "/"))
 	if requestPath == "." || requestPath == "" {
 		http.NotFound(w, r)
