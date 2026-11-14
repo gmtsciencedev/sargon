@@ -67,7 +67,7 @@ ssh $SERVER "
   sudo rm -rf /opt/sargon/frontend/dist.previous
   sudo mv /opt/sargon/frontend/dist /opt/sargon/frontend/dist.previous
   sudo mkdir /opt/sargon/frontend/dist
-  sudo tar xzf /tmp/sargon-frontend-dist-$TAG.tar.gz -C /opt/sargon/frontend/dist
+  sudo tar xzf /tmp/sargon-frontend-dist-$TAG.tar.gz --strip-components=1 -C /opt/sargon/frontend/dist
   sudo chown -R sargon:sargon /opt/sargon/frontend/dist
   sudo systemctl start sargon
 "

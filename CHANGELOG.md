@@ -10,7 +10,12 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
-Nothing pending — the working tree matches `v1.1.0-rc.1`.
+### Documentation
+
+- `UPGRADE.md`: the frontend archive holds a top-level `dist/`
+  directory, so extracting it as written produced `frontend/dist/dist`
+  and the wiki answered 404 on every page. The command now strips that
+  directory.
 
 ## [1.1.0-rc.1] — 2026-11-14
 
