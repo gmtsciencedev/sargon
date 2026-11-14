@@ -109,9 +109,13 @@ jobs:
         # workflow on the same tag is a no-op instead of an error.
         run: |
           if ! gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            # A tag with a pre-release suffix (v1.1.0-rc.1) must not take
+            # the "Latest" badge from the stable release.
+            prerelease=""
+            case "${GITHUB_REF_NAME}" in *-*) prerelease="--prerelease --latest=false" ;; esac
             gh release create "${GITHUB_REF_NAME}" \
               --title "${GITHUB_REF_NAME}" \
-              --notes-file release-notes.md
+              --notes-file release-notes.md $prerelease
           else
             echo "Release ${GITHUB_REF_NAME} already exists — nothing to do."
           fi
