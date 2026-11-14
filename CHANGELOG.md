@@ -29,6 +29,14 @@ project's design invariants and `specs/` for the dialect specification.
 
 ### Fixed
 
+- **Writing `/docs/` creates the namespace index.** A write to a path
+  ending with `/` (REST `PUT /api/pages/docs/`, a move to `/docs/`)
+  created the leaf page `docs.md` when the `docs/` directory did not
+  exist yet, and pages under `/docs/` were then refused as a namespace
+  conflict. It now creates `docs/index.md`; over an existing leaf
+  `docs.md` it is a namespace conflict. The sitemap names namespace
+  nodes canonically (`/docs/`), so a namespace index appears once
+  instead of as a `/docs/` child under an empty `/docs` node.
 - **MCP tools now use canonical page paths throughout.** The tools
   dropped the leading slash from every path they received and worked
   on `docs/guide` internally, against the rule that a page path starts

@@ -52,14 +52,15 @@ func (s *Server) handleSitemap(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Strip leading "/" for splitting; the path in the node keeps it.
-		trimmed := strings.TrimPrefix(p.Path, "/")
+		// Split without the leading slash or a namespace index's trailing
+		// one; node paths stay canonical: namespaces end with "/".
+		trimmed := strings.Trim(p.Path, "/")
 		parts := strings.Split(trimmed, "/")
 		parent := root
 
 		// Ensure all intermediate namespace nodes exist.
 		for i := 0; i < len(parts)-1; i++ {
-			prefix := "/" + strings.Join(parts[:i+1], "/")
+			prefix := "/" + strings.Join(parts[:i+1], "/") + "/"
 			if existing, ok := nodeMap[prefix]; ok {
 				parent = existing
 			} else {

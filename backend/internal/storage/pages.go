@@ -357,7 +357,7 @@ func (s *FileStore) CheckNamespaceConflict(pagePath string) error {
 		return err
 	}
 
-	contentPath, _, err := s.resolveWritableContentPath(normalized)
+	contentPath, _, err := s.resolveWritableContentPath(normalized, wantsNamespaceIndex(pagePath))
 	if err != nil {
 		return err
 	}
@@ -415,7 +415,7 @@ func (s *FileStore) putWithSummary(pagePath, markdownContent, author, summary st
 	unlock := s.lockPage(normalized)
 	defer unlock()
 
-	contentPath, isIndex, err := s.resolveWritableContentPath(normalized)
+	contentPath, isIndex, err := s.resolveWritableContentPath(normalized, wantsNamespaceIndex(pagePath))
 	if err != nil {
 		return PutResult{}, err
 	}
@@ -1198,7 +1198,7 @@ func (s *FileStore) Move(oldPath, newPath string, moveMedia, updateLinks bool, a
 	}
 
 	// Resolve the new content path.
-	newContentPath, newIsIndex, err := s.resolveWritableContentPath(newNorm)
+	newContentPath, newIsIndex, err := s.resolveWritableContentPath(newNorm, wantsNamespaceIndex(newPath))
 	if err != nil {
 		return MoveResult{}, fmt.Errorf("resolve new content path: %w", err)
 	}
@@ -1913,7 +1913,12 @@ func (s *FileStore) resolveExistingContentPath(pagePath string) (string, bool, e
 	return "", false, os.ErrNotExist
 }
 
-func (s *FileStore) resolveWritableContentPath(pagePath string) (string, bool, error) {
+// resolveWritableContentPath picks the file a write to pagePath (normalized,
+// trailing slash already gone) lands in. asIndex says the caller named a
+// namespace index ("/docs/"): the write then goes to docs/index.md, and an
+// existing leaf docs.md is a namespace conflict. Without it, an existing file
+// or namespace directory decides, and a new path is a leaf page.
+func (s *FileStore) resolveWritableContentPath(pagePath string, asIndex bool) (string, bool, error) {
 	pageFile, err := s.contentPagePath(pagePath)
 	if err != nil {
 		return "", false, err
@@ -1927,6 +1932,12 @@ func (s *FileStore) resolveWritableContentPath(pagePath string) (string, bool, e
 	indexExists := fileExists(indexFile)
 	if pageExists && indexExists {
 		return "", false, fmt.Errorf("ambiguous page path %q: both page and namespace index exist", pagePath)
+	}
+	if asIndex {
+		if pageExists {
+			return "", false, &NamespaceConflictError{ConflictingPage: CanonicalPath(pagePath)}
+		}
+		return indexFile, true, nil
 	}
 	if indexExists {
 		return indexFile, true, nil
@@ -1986,6 +1997,14 @@ func (s *FileStore) safeJoinContent(rel string) (string, error) {
 		return "", fmt.Errorf("invalid page path")
 	}
 	return p, nil
+}
+
+// wantsNamespaceIndex reports whether a raw page path names a namespace
+// index: it ends with "/" and is not the root page. normalizePagePath drops
+// that slash, so writers read it from the raw path.
+func wantsNamespaceIndex(raw string) bool {
+	trimmed := strings.TrimSpace(raw)
+	return strings.HasSuffix(trimmed, "/") && strings.Trim(trimmed, "/") != ""
 }
 
 func normalizePagePath(raw string) (string, error) {

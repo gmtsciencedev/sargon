@@ -97,18 +97,18 @@ func TestSitemap_NestedNamespace(t *testing.T) {
 	_, body := callSitemap(t, s)
 	root := body["pages"].([]any)[0].(map[string]any)
 	kids, _ := root["children"].([]any)
-	// The `docs` namespace node must exist even though /docs itself is
+	// The `docs` namespace node must exist even though /docs/ itself is
 	// not a page.
 	var docs map[string]any
 	for _, k := range kids {
 		m := k.(map[string]any)
-		if m["path"] == "/docs" {
+		if m["path"] == "/docs/" {
 			docs = m
 			break
 		}
 	}
 	if docs == nil {
-		t.Fatalf("expected intermediate /docs node in %v", kids)
+		t.Fatalf("expected intermediate /docs/ node in %v", kids)
 	}
 	if has, _ := docs["has_page"].(bool); has {
 		t.Errorf("intermediate /docs should have has_page=false; got true")
@@ -140,7 +140,7 @@ func TestSitemap_NamespaceIndexHasPage(t *testing.T) {
 	for _, k := range kids {
 		m := k.(map[string]any)
 		p, _ := m["path"].(string)
-		if p == "/docs/" || p == "/docs" {
+		if p == "/docs/" {
 			found = true
 			if hp, _ := m["has_page"].(bool); !hp {
 				t.Errorf("%s: has_page = false, want true", p)
@@ -148,7 +148,10 @@ func TestSitemap_NamespaceIndexHasPage(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("did not find /docs/ or /docs among root children: %v", kids)
+		t.Errorf("did not find /docs/ among root children: %v", kids)
+	}
+	if len(kids) != 1 {
+		t.Errorf("want the single node /docs/ under the root, got %v", kids)
 	}
 }
 
