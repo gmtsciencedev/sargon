@@ -10,12 +10,42 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
+Nothing pending — the working tree matches `v1.1.0-rc.2`.
+
+## [1.1.0-rc.2] — 2026-11-14
+
+Second candidate for 1.1, from the first deployment of `--sites`: two
+public wikis on one small VPS. It adds a per-wiki favicon, which
+several wikis on one server made necessary, and fixes what that
+deployment turned up.
+
+### Added
+
+- **Per-wiki favicon.** A `favicon.png` (or `.ico`, `.svg`) at the root
+  of a wiki's content replaces Sargon's icon in the browser tab,
+  bookmarks and home screen, the same way `logo.png` already replaced
+  the logo. A wiki without one keeps Sargon's.
+
+### Fixed
+
+- **PDF export of a page that does not exist** waited 30 seconds for
+  the page to render and then failed with a 500. It now answers 404 at
+  once. An export whose page URL itself answers with an HTTP error —
+  the frontend not being served, for instance — fails within a second
+  and names the status, instead of timing out.
+- **Certificate issuance logged refused handshakes.** The TLS listener
+  did not advertise the ACME protocol, so Let's Encrypt's TLS-ALPN-01
+  validation was refused before it fell back to HTTP-01. The listener
+  now uses autocert's own TLS settings, and validation succeeds on the
+  first method.
+
 ### Documentation
 
 - `UPGRADE.md`: the frontend archive holds a top-level `dist/`
   directory, so extracting it as written produced `frontend/dist/dist`
   and the wiki answered 404 on every page. The command now strips that
   directory.
+- `docs/deploy.md`: logo and favicon per wiki.
 
 ## [1.1.0-rc.1] — 2026-11-14
 

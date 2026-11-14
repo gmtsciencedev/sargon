@@ -150,7 +150,7 @@ Rendering is done entirely by ProseMirror. There is no separate rendering pipeli
 
 ### Release status
 
-**v1.0.0** is released (2026-11-14), after six release candidates. **v1.1.0-rc.1** (2026-11-14) adds serving several wikis from one process (`--sites`). See `CHANGELOG.md` for the full journey. Versioning and the RC rule for later releases are in `DEV.md`.
+**v1.0.0** is released (2026-11-14), after six release candidates. **v1.1.0-rc.2** (2026-11-14) adds serving several wikis from one process (`--sites`) and per-wiki favicons. See `CHANGELOG.md` for the full journey. Versioning and the RC rule for later releases are in `DEV.md`.
 
 ## Milestone targets
 

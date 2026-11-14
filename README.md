@@ -2,7 +2,7 @@
 
 Sargon (formerly Gowiki) is a modern wiki engine inspired by [DokuWiki](https://www.dokuwiki.org/), one of the best wikis in the world. It aims to preserve what DokuWiki got right — plain-text storage, versioning, extensibility — while replacing the pieces that could not evolve within the original codebase.
 
-Current release: **v1.0.0**; release candidate **v1.1.0-rc.1** adds serving several wikis from one process. See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
+Current release: **v1.0.0**; release candidate **v1.1.0-rc.2** adds serving several wikis from one process. See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
 
 ## The name and the logo
 

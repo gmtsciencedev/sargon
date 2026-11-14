@@ -95,7 +95,7 @@ edited under the new version and must be discarded.
 
 ## Version notes
 
-### 1.0.0 → 1.1.0-rc.1
+### 1.0.0 → 1.1.0-rc.2
 
 Nothing to change. Serving several wikis from one process is opt-in
 through `--sites`; see
