@@ -234,25 +234,32 @@ In this mode, remove `AmbientCapabilities=CAP_NET_BIND_SERVICE` from the systemd
 
 ## Running several wikis on one server
 
-One Sargon process serves one wiki. To host several independent wikis on
-the same machine, run one instance per wiki behind a reverse proxy: each
-instance has its own configuration, data directory, database and
-service, and shares only the binary, the frontend bundle and the
-PostgreSQL server. No data is shared between instances.
+One Sargon process can serve several independent wikis. Start it with
+`--sites` pointing at a directory that holds one subdirectory per wiki.
+Each wiki has its own configuration, data directory, database, users,
+ACLs, search index and background jobs; the wikis share the process,
+the binary, the frontend bundle, the listening ports, the TLS
+certificate cache and one headless Chrome. No data is shared between
+wikis.
 
 Each wiki needs its own hostname (`wiki1.example.com`,
-`wiki2.example.com`): Sargon serves from the root of its domain, and
-browser logins are scoped to the hostname, so separate hostnames also
-mean separate logins.
+`wiki2.example.com`). Sargon routes every request by its `Host`, serves
+each wiki from the root of its domain, and browser logins are scoped to
+the hostname, so separate hostnames also mean separate logins.
 
 ### Layout
 
 ```
-/opt/sargon/sargon-server        shared binary
-/opt/sargon/frontend/dist        shared frontend bundle
+/opt/sargon/sargon-server        binary
+/opt/sargon/frontend/dist        frontend bundle
 /opt/sargon/wikis/wiki1/         config.yaml + data/
 /opt/sargon/wikis/wiki2/         config.yaml + data/
+/opt/sargon/wikis/certs/         Let's Encrypt certificates (created by the server)
 ```
+
+Every subdirectory of `wikis/` that holds a `config.yaml` is a wiki,
+named after its directory in the log (`[wiki1] …`). Other
+subdirectories are ignored.
 
 ### One database per wiki
 
@@ -263,18 +270,11 @@ sudo -u postgres createdb -O sargon sargon_wiki2
 
 ### One configuration per wiki
 
-Each instance listens on its own local port without TLS; the reverse
-proxy holds the certificates. Bind to `127.0.0.1` so instances are
-reachable only through the proxy — Sargon trusts the forwarded client
-address and protocol headers, which only the proxy may set.
-
 `/opt/sargon/wikis/wiki1/config.yaml`:
 
 ```yaml
-data_dir: /opt/sargon/wikis/wiki1/data
-
 server:
-  addr: "127.0.0.1:8081"
+  tls_domain: wiki1.example.com
   web_dir: /opt/sargon/frontend/dist
 
 site:
@@ -286,82 +286,79 @@ database:
   dsn: postgres:///sargon_wiki1
 ```
 
-The second wiki uses `127.0.0.1:8082`, its own `data_dir`, title,
-`base_url` and database. `base_url` must match the hostname the proxy
-serves it under: Sargon rejects requests for any other host.
+The second wiki has its own `tls_domain`, title, `base_url` and
+database. Other rules:
 
-### One systemd template for all instances
+- `server.tls_domain` is the hostname the wiki answers to, and the
+  server obtains its certificate. Either every wiki sets it, or none
+  does (see [Behind a reverse proxy](#behind-a-reverse-proxy)); the
+  server refuses to start on a mix.
+- The data directory is `data/` next to `config.yaml`. To put it
+  elsewhere, set `data_dir`; a relative path is resolved against the
+  wiki's directory.
+- `server.addr` is ignored: the wikis share the listening ports.
+- Two wikis with the same hostname or the same data directory stop
+  the server at startup with an error naming both.
 
-`/etc/systemd/system/sargon@.service` — `%i` is the wiki name:
+### systemd service
+
+The service from [step 6](#6-create-the-systemd-service) with a
+different `ExecStart` and write path:
 
 ```ini
-[Unit]
-Description=Sargon (%i)
-After=network.target postgresql.service
-Requires=postgresql.service
-
-[Service]
-Type=simple
-User=sargon
-Group=sargon
-ExecStart=/opt/sargon/sargon-server -config /opt/sargon/wikis/%i/config.yaml
-Restart=on-failure
-RestartSec=5
-
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/opt/sargon/wikis/%i
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
+ExecStart=/opt/sargon/sargon-server --sites /opt/sargon/wikis
+ReadWritePaths=/opt/sargon/wikis
 ```
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now sargon@wiki1 sargon@wiki2
+sudo systemctl restart sargon
+sudo journalctl -u sargon --since '2 min ago' --no-pager | grep -E 'serving|WARNING'
 ```
 
-### Reverse proxy
-
-[Caddy](https://caddyserver.com/) obtains and renews the certificates
-itself and sets the forwarded headers. `/etc/caddy/Caddyfile`:
-
-```
-wiki1.example.com {
-    reverse_proxy 127.0.0.1:8081
-}
-
-wiki2.example.com {
-    reverse_proxy 127.0.0.1:8082
-}
-```
-
-```bash
-sudo systemctl reload caddy
-```
+The log ends with `serving 2 wikis: wiki1.example.com, wiki2.example.com`.
 
 ### Adding a wiki later
 
-Pick the next free port, then: create the database, write
-`/opt/sargon/wikis/<name>/config.yaml`, add a block to the Caddyfile,
-point the hostname's DNS at the server, and run
-`sudo systemctl enable --now sargon@<name>` and
-`sudo systemctl reload caddy`.
+Create the database, write `/opt/sargon/wikis/<name>/config.yaml`,
+point the hostname's DNS at the server, and restart the service. The
+restart takes every wiki offline for a few seconds.
+
+### Turning an existing installation into one wiki among several
+
+Create `/opt/sargon/wikis/<name>/`, move `config.yaml` into it, and
+either move `data/` next to it or keep `data_dir` pointing at the
+current data directory (an absolute path stays valid). Remove
+`server.addr` if set. Then switch the service to `--sites` as above.
+The certificate is obtained again into `wikis/certs/` on the first
+request.
+
+### Behind a reverse proxy
+
+If something else terminates TLS, leave `tls_domain` unset in every
+wiki: each wiki then answers to the hostname of its `site.base_url`,
+and the server listens in plain HTTP on `--addr` (default `:8080`,
+e.g. `--addr 127.0.0.1:8080`). The proxy forwards every hostname to
+that one address, keeping the `Host` header.
 
 ### Sizing
 
-Each instance runs its own headless Chrome for PDF export, and that is
-what sets the memory budget: plan for roughly 300 MB per wiki (Sargon
-itself takes about 55 MB). A 2 GB server holds three to four wikis.
+Sargon takes about 55 MB per wiki, and the shared headless Chrome about
+250 MB once a PDF has been exported. A 2 GB server holds ten wikis or
+more of the size of a team wiki.
+
+### Isolation
+
+The wikis share a process. A crash takes them all offline until
+systemd restarts the service, and an upgrade upgrades them all. For a
+wiki that needs its own release schedule or its own failure domain —
+regulated records, say — run it as a separate installation with its
+own service, as in the main procedure above.
 
 ### Upgrades and backups
 
-Upgrading the shared binary and bundle upgrades every wiki at once:
-follow [`UPGRADE.md`](../UPGRADE.md), restarting each instance
-(`sudo systemctl restart 'sargon@*'`). Back up each wiki's `data/`
-directory and database separately.
+Follow [`UPGRADE.md`](../UPGRADE.md) once for the shared binary and
+bundle. Back up each wiki's `data/` directory and database separately.
 
 ## Troubleshooting
 

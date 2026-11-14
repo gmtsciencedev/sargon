@@ -95,6 +95,12 @@ edited under the new version and must be discarded.
 
 ## Version notes
 
+### 1.0.0 → 1.1.0-rc.1
+
+Nothing to change. Serving several wikis from one process is opt-in
+through `--sites`; see
+[`docs/deploy.md`](docs/deploy.md#running-several-wikis-on-one-server).
+
 ### 1.0.0-rc.6 → 1.0.0
 
 - Install a colour emoji font on the server so PDF exports print status

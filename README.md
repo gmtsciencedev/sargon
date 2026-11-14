@@ -2,7 +2,7 @@
 
 Sargon (formerly Gowiki) is a modern wiki engine inspired by [DokuWiki](https://www.dokuwiki.org/), one of the best wikis in the world. It aims to preserve what DokuWiki got right — plain-text storage, versioning, extensibility — while replacing the pieces that could not evolve within the original codebase.
 
-Current release: **v1.0.0**. See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
+Current release: **v1.0.0**; release candidate **v1.1.0-rc.1** adds serving several wikis from one process. See [`CHANGELOG.md`](CHANGELOG.md) for the full history.
 
 ## The name and the logo
 
@@ -98,6 +98,8 @@ Serve everything from the Go binary — it embeds the frontend `dist/` and serve
 The reference production deployment is at `wiki.gmt.bio` (single binary on a Debian host behind systemd, TLS terminated by the binary).
 
 For a first installation, follow [`docs/deploy.md`](docs/deploy.md). To upgrade an existing installation to a newer release, follow [`UPGRADE.md`](UPGRADE.md).
+
+One process can also serve several independent wikis, each on its own hostname, with no reverse proxy: start it with `--sites DIR`, one subdirectory and `config.yaml` per wiki. See [Running several wikis on one server](docs/deploy.md#running-several-wikis-on-one-server).
 
 ## HTTP API
 

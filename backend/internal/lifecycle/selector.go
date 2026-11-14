@@ -5,8 +5,10 @@ import (
 	"sync"
 )
 
-// selectorCache memoises compiled regex per rule ID so the scanner doesn't
-// re-compile on every page in every scan pass. Guarded by a mutex — the
+// selectorCache memoises compiled regexes so the scanner doesn't
+// re-compile on every page in every scan pass. Keyed by the regex text,
+// which is what gets compiled; the cache is shared by every wiki the
+// process serves. Guarded by a mutex — the
 // scanner is single-goroutine today, but tests hit selectors in parallel.
 var selectorCache = struct {
 	sync.Mutex
@@ -22,7 +24,7 @@ func compiledScope(r Rule) *regexp.Regexp {
 	}
 	selectorCache.Lock()
 	defer selectorCache.Unlock()
-	if re, ok := selectorCache.m[r.ID]; ok {
+	if re, ok := selectorCache.m[r.ScopeRegex]; ok {
 		return re
 	}
 	// Parse errors were rejected at parse time, so MustCompile is safe
@@ -34,7 +36,7 @@ func compiledScope(r Rule) *regexp.Regexp {
 	if err != nil {
 		re = regexp.MustCompile(`\z\A`) // never matches
 	}
-	selectorCache.m[r.ID] = re
+	selectorCache.m[r.ScopeRegex] = re
 	return re
 }
 
