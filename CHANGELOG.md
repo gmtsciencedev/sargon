@@ -10,6 +10,14 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
+### Changed
+
+- **The default light palette is green.** The brand color is now
+  `#2d5a47` (banner, primary buttons), links `#1e7a5e`, accent panels
+  `#e7f1ec`. A wiki that wants another color sets
+  `themes.palette_overrides` in its `config.yaml`; the dark palette is
+  unchanged.
+
 ### Fixed
 
 - **MCP tools now use canonical page paths throughout.** The tools

@@ -19,10 +19,10 @@
   --gw-color-border: #e0e0e0; /* dividers, card outlines */
   --gw-color-border-soft: #f0f0f0; /* very light separators */
 
-  --gw-color-primary: #1e3f72; /* brand color — used by banner (light mode), accent fills */
+  --gw-color-primary: #2d5a47; /* brand color — used by banner (light mode), accent fills */
   --gw-color-primary-fg: #ffffff; /* text on --gw-color-primary */
-  --gw-color-primary-hover: #2a507f;
-  --gw-color-accent: #e8f0fe; /* chip backgrounds, highlight panels */
+  --gw-color-primary-hover: #3a6b57;
+  --gw-color-accent: #e7f1ec; /* chip backgrounds, highlight panels */
 
   /* Banner — defaults to the brand primary on light; dark mode overrides
      this to a near-black slate so the banner feels part of the dark page
@@ -30,8 +30,8 @@
   --gw-color-banner-bg: var(--gw-color-primary);
   --gw-color-banner-fg: var(--gw-color-primary-fg);
 
-  --gw-color-link: #1a56db; /* inline hyperlinks (generic) */
-  --gw-color-link-hover: #134fc0;
+  --gw-color-link: #1e7a5e; /* inline hyperlinks (generic) */
+  --gw-color-link-hover: #17634c;
   --gw-color-link-missing: #c62828; /* links to non-existent pages */
   --gw-color-link-external: #0b57d0; /* external (off-wiki) hyperlinks */
   --gw-color-link-internal: #388e3c; /* internal wiki links (existing pages) */

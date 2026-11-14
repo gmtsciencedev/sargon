@@ -318,9 +318,9 @@ Every themeable value is a CSS custom property declared at `:root`. Naming conve
 | `--gw-color-text` | `#222222` | `#e6e6e6` | Body text |
 | `--gw-color-muted` | `#666666` | `#999999` | Secondary/subtitle text |
 | `--gw-color-border` | `#e0e0e0` | `#3a3a3a` | Dividers, card outlines |
-| `--gw-color-primary` | `#1e3f72` | `#2e5ba8` | Banner background, accent fills |
+| `--gw-color-primary` | `#2d5a47` | `#2e5ba8` | Banner background, accent fills |
 | `--gw-color-primary-fg` | `#ffffff` | `#ffffff` | Text on `--gw-color-primary` |
-| `--gw-color-link` | `#1a56db` | `#80b3ff` | Inline hyperlinks |
+| `--gw-color-link` | `#1e7a5e` | `#80b3ff` | Inline hyperlinks |
 | `--gw-color-link-missing` | `#c62828` | `#ff7373` | Links to non-existent pages |
 | `--gw-color-success` | `#2e7d32` | `#7fcf88` | Done-state indicators |
 | `--gw-color-warning` | `#f57f17` | `#ffb74d` | High-priority chips, overdue |

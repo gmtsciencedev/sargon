@@ -672,8 +672,8 @@ const templateStyles = `
 
 .gowiki-template-create-btn {
   padding: 4px 12px;
-  border: 1px solid var(--gw-color-primary, #1e3f72);
-  background: var(--gw-color-primary, #1e3f72);
+  border: 1px solid var(--gw-color-primary, #2d5a47);
+  background: var(--gw-color-primary, #2d5a47);
   color: var(--gw-color-primary-fg, #ffffff);
   border-radius: 3px;
   cursor: pointer;
@@ -682,8 +682,8 @@ const templateStyles = `
 }
 
 .gowiki-template-create-btn:hover:not(:disabled) {
-  background: var(--gw-color-primary-hover, #2a507f);
-  border-color: var(--gw-color-primary-hover, #2a507f);
+  background: var(--gw-color-primary-hover, #3a6b57);
+  border-color: var(--gw-color-primary-hover, #3a6b57);
 }
 
 .gowiki-template-create-btn:disabled {
