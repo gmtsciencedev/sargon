@@ -10,7 +10,47 @@ project's design invariants and `specs/` for the dialect specification.
 
 ## [Unreleased]
 
-Nothing pending — the working tree matches `v1.0.0`.
+Nothing pending — the working tree matches `v1.1.0-rc.1`.
+
+## [1.1.0-rc.1] — 2026-11-14
+
+First candidate for 1.1, whose one feature is serving several wikis
+from one process. Until now, a second wiki on the same server meant a
+second instance and a reverse proxy in front of both to share ports 80
+and 443; the single-binary deployment stopped being single. With
+`--sites`, the server holds the ports and the certificates for every
+wiki itself and routes each request by its hostname. A single-wiki
+installation runs exactly as before and needs no change.
+
+### Added
+
+- **Several wikis in one process.** `sargon-server --sites DIR` serves
+  every subdirectory of `DIR` that holds a `config.yaml` as an
+  independent wiki: its own data directory, database, users, ACLs,
+  search index, reviewflows, todos and background jobs. Each wiki
+  answers to its `server.tls_domain`, and Let's Encrypt certificates
+  are obtained for all of them; behind a proxy that terminates TLS,
+  each wiki answers to the hostname of its `site.base_url` instead.
+  The wikis share one headless Chrome, so each extra wiki costs about
+  55 MB rather than a full instance with its own browser. A request
+  for an unknown hostname gets a 404. Startup refuses two wikis with
+  the same hostname or data directory, and a mix of TLS and non-TLS
+  wikis. Log lines written during a wiki's startup and by its
+  background jobs in `main` carry the wiki's name.
+
+### Internal
+
+- Server startup is split into `buildSite`, which builds one wiki from
+  its configuration, and the listener code, which `--sites` and the
+  single-wiki mode share.
+- The lifecycle scope-regex cache is keyed by the regex text instead
+  of the rule ID, so it stays correct when shared by several wikis.
+
+### Documentation
+
+- `docs/deploy.md`: "Running several wikis on one server" now
+  describes `--sites`, including converting an existing installation
+  and running behind a reverse proxy.
 
 ## [1.0.0] — 2026-11-14
 
