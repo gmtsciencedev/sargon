@@ -743,6 +743,19 @@ function renderTagBadge(tag: { label: string; icon: string; color: string }): HT
 const lookupTableCache = new Map<string, { data: Map<number, string>; timestamp: number }>()
 const lookupTableInflight = new Map<string, Promise<Map<number, string>>>()
 
+// lookupLabel names a referenced row: the declared display column when the
+// row carries a value for it, else its `name` field, else its id. A display
+// column that was archived or renamed is absent from the row, so the label
+// falls through to `name` or the id.
+export function lookupLabel(fields: Record<string, unknown>, id: number, displayColumn?: string): string {
+  for (const col of [displayColumn, "name"]) {
+    if (!col) continue
+    const v = fields[col]
+    if (v != null && v !== "") return String(v)
+  }
+  return String(id)
+}
+
 async function getLookupOptions(tableName: string, displayColumn?: string): Promise<Map<number, string>> {
   const key = tableName + "\x00" + (displayColumn || "")
   const cached = lookupTableCache.get(key)
@@ -759,13 +772,7 @@ async function getLookupOptions(tableName: string, displayColumn?: string): Prom
     const result = new Map<number, string>()
     for (const r of rows) {
       const fields = r.fields || {}
-      let display: unknown
-      if (displayColumn && fields[displayColumn] != null && fields[displayColumn] !== "") {
-        display = fields[displayColumn]
-      } else {
-        display = Object.values(fields).find((v) => typeof v === "string" && v !== "") ?? String(r.id)
-      }
-      result.set(r.id, String(display))
+      result.set(r.id, lookupLabel(fields, r.id, displayColumn))
     }
     lookupTableCache.set(key, { data: result, timestamp: Date.now() })
     return result

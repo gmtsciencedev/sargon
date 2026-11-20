@@ -29,6 +29,14 @@ project's design invariants and `specs/` for the dialect specification.
 
 ### Fixed
 
+- **Lookup cells show the declared display column, else `name`, else the
+  id.** When the declared `display_column` was archived, or none was
+  declared, a lookup cell or form option showed the first non-empty text
+  field of the referenced row (a date, an address). Table views, forms and
+  pivots now use the same order: the declared column when the row has a
+  value for it, then `name`, then the id (pivots keep the page path before
+  the id).
+
 - **Moving a page needs edit permission on the destination.** The REST
   move endpoint checked edit permission on the source page only, so a
   user allowed to edit one namespace could move pages out of it to any

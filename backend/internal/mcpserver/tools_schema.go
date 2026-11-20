@@ -142,7 +142,7 @@ func registerCreateDatabaseFieldTool(srv *mcpsrv.MCPServer, deps Deps) {
 			mcpgo.Description("For tag/lookup fields: the target table's name. Ignored for other types."),
 		),
 		mcpgo.WithString("display_column",
-			mcpgo.Description("For lookup fields: the target-table column whose value renders in the cell. Ignored for other types."),
+			mcpgo.Description("For lookup fields: the target-table column whose value renders in the cell. When it is empty, archived or unset on a row, the cell shows the row's `name` field, else its id. Ignored for other types."),
 		),
 		mcpgo.WithArray("enum_values",
 			mcpgo.Description("For enum/multi_enum: list of allowed string values. Ignored for other types."),

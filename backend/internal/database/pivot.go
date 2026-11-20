@@ -600,17 +600,7 @@ func (ds *DataStore) batchResolveLookupTargets(ctx context.Context, targetTable,
 		return labels, paths, fmt.Errorf("database not connected")
 	}
 
-	// Only lookup + one active field (displayColumn) — falls back to
-	// page_path if no valid displayColumn.
-	dispCol := ""
-	if displayColumn != "" {
-		for _, fd := range target.Fields {
-			if fd.ArchivedAt == nil && fd.Name == displayColumn {
-				dispCol = displayColumn
-				break
-			}
-		}
-	}
+	dispCol := lookupLabelColumn(target.Fields, displayColumn)
 	// Coerce ids to int64s for the ANY($1) predicate.
 	intIDs := make([]int64, 0, len(ids))
 	for _, s := range ids {
@@ -643,10 +633,14 @@ func (ds *DataStore) batchResolveLookupTargets(ctx context.Context, targetTable,
 				return labels, paths, err
 			}
 			key := strconv.FormatInt(id, 10)
-			if label != nil {
-				labels[key] = fmt.Sprintf("%v", label)
-			}
 			paths[key] = pagePath
+			if label != nil && fmt.Sprintf("%v", label) != "" {
+				labels[key] = fmt.Sprintf("%v", label)
+			} else if pagePath != "" {
+				labels[key] = pagePath
+			} else {
+				labels[key] = key
+			}
 		} else {
 			if err := rows.Scan(&id, &pagePath); err != nil {
 				return labels, paths, err
@@ -662,6 +656,24 @@ func (ds *DataStore) batchResolveLookupTargets(ctx context.Context, targetTable,
 		}
 	}
 	return labels, paths, rows.Err()
+}
+
+// lookupLabelColumn picks the target-table column that names a referenced
+// row: the declared display column when it is an active field, else an
+// active `name` field, else "" (the caller labels the row by page_path, then
+// id). The frontend's lookupLabel applies the same order.
+func lookupLabelColumn(fields []FieldDef, displayColumn string) string {
+	for _, want := range []string{displayColumn, "name"} {
+		if want == "" {
+			continue
+		}
+		for _, fd := range fields {
+			if fd.ArchivedAt == nil && fd.Name == want {
+				return want
+			}
+		}
+	}
+	return ""
 }
 
 // sortAxis sorts an axis slice in place. Preference order: an explicit sort
