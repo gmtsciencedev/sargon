@@ -740,8 +740,13 @@ function renderTagBadge(tag: { label: string; icon: string; color: string }): HT
 
 // ── Lookup helpers ──
 
-const lookupTableCache = new Map<string, { data: Map<number, string>; timestamp: number }>()
-const lookupTableInflight = new Map<string, Promise<Map<number, string>>>()
+interface LookupTargets {
+  labels: Map<number, string>
+  paths: Map<number, string>
+}
+
+const lookupTableCache = new Map<string, { data: LookupTargets; timestamp: number }>()
+const lookupTableInflight = new Map<string, Promise<LookupTargets>>()
 
 // lookupLabel names a referenced row: the declared display column when the
 // row carries a value for it, else its `name` field, else its id. A display
@@ -756,7 +761,9 @@ export function lookupLabel(fields: Record<string, unknown>, id: number, display
   return String(id)
 }
 
-async function getLookupOptions(tableName: string, displayColumn?: string): Promise<Map<number, string>> {
+// getLookupTargets loads the rows of a lookup's target table: id → label,
+// and id → page_path for the rows bound to a page.
+async function getLookupTargets(tableName: string, displayColumn?: string): Promise<LookupTargets> {
   const key = tableName + "\x00" + (displayColumn || "")
   const cached = lookupTableCache.get(key)
   if (cached && Date.now() - cached.timestamp < 30000) return cached.data
@@ -765,14 +772,14 @@ async function getLookupOptions(tableName: string, displayColumn?: string): Prom
   if (inflight) return inflight
 
   const promise = (async () => {
+    const result: LookupTargets = { labels: new Map(), paths: new Map() }
     const resp = await fetch(`/api/database/${encodeURIComponent(tableName)}/rows?limit=500`)
-    if (!resp.ok) return new Map<number, string>()
+    if (!resp.ok) return result
     const body = await resp.json()
     const rows: any[] = body.rows || []
-    const result = new Map<number, string>()
     for (const r of rows) {
-      const fields = r.fields || {}
-      result.set(r.id, lookupLabel(fields, r.id, displayColumn))
+      result.labels.set(r.id, lookupLabel(r.fields || {}, r.id, displayColumn))
+      if (r.page_path) result.paths.set(r.id, String(r.page_path))
     }
     lookupTableCache.set(key, { data: result, timestamp: Date.now() })
     return result
@@ -781,6 +788,31 @@ async function getLookupOptions(tableName: string, displayColumn?: string): Prom
   lookupTableInflight.set(key, promise)
   promise.finally(() => lookupTableInflight.delete(key))
   return promise
+}
+
+async function getLookupOptions(tableName: string, displayColumn?: string): Promise<Map<number, string>> {
+  return (await getLookupTargets(tableName, displayColumn)).labels
+}
+
+// renderLookupValue fills a read-only cell with the referenced row's label,
+// as a link to the row's page when it has one (the same link a pivot draws).
+function renderLookupValue(td: HTMLElement, tableName: string, displayColumn: string | undefined, val: unknown): void {
+  td.textContent = "..."
+  getLookupTargets(tableName, displayColumn).then(({ labels, paths }) => {
+    const id = Number(val)
+    const label = labels.get(id) || String(val)
+    const path = paths.get(id)
+    td.textContent = ""
+    if (path) {
+      const a = document.createElement("a")
+      a.className = "gowiki-database-page-link"
+      a.href = path
+      a.textContent = label
+      td.appendChild(a)
+    } else {
+      td.textContent = label
+    }
+  })
 }
 
 // ── User helpers ──
@@ -1674,12 +1706,7 @@ class DatabaseQueryNodeView {
             })
           }
         } else if (f.type === "lookup" && f.foreign_key) {
-          if (val && Number(val) !== 0) {
-            td.textContent = "..."
-            getLookupOptions(f.foreign_key, f.display_column).then((opts) => {
-              td.textContent = opts.get(Number(val)) || String(val)
-            })
-          }
+          if (val && Number(val) !== 0) renderLookupValue(td, f.foreign_key, f.display_column, val)
         } else if (f.type === "user" && val) {
           td.textContent = String(val)
           fetchUserInfo(String(val)).then((info) => {
@@ -2800,12 +2827,7 @@ class DatabaseRowNodeView {
           })
         }
       } else if (f && f.type === "lookup" && f.foreign_key) {
-        if (val && Number(val) !== 0) {
-          tdVal.textContent = "..."
-          getLookupOptions(f.foreign_key, f.display_column).then((opts) => {
-            tdVal.textContent = opts.get(Number(val)) || String(val)
-          })
-        }
+        if (val && Number(val) !== 0) renderLookupValue(tdVal, f.foreign_key, f.display_column, val)
       } else if (f && f.type === "user" && val) {
         tdVal.textContent = String(val)
         fetchUserInfo(String(val)).then((info) => {

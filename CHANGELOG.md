@@ -37,6 +37,11 @@ project's design invariants and `specs/` for the dialect specification.
   value for it, then `name`, then the id (pivots keep the page path before
   the id).
 
+- **Lookup cells link to the referenced row's page.** In table and row
+  views a lookup value was plain text; it now links to the page the
+  referenced row is bound to, as pivots already did. A row bound to no page
+  stays plain text.
+
 - **Moving a page needs edit permission on the destination.** The REST
   move endpoint checked edit permission on the source page only, so a
   user allowed to edit one namespace could move pages out of it to any
